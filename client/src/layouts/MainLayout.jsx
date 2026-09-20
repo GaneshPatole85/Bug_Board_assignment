@@ -87,7 +87,6 @@ export const MainLayout = () => {
               </svg>
             </div>
             <span className="brand-name">BugBoard</span>
-            <span className="brand-badge">Phase 3 • Core Product</span>
           </div>
         </div>
 
@@ -273,10 +272,8 @@ export const MainLayout = () => {
 
           <div className="sidebar-footer">
             <div className="tech-info-card">
-              <strong>BugBoard Architecture</strong>
-              Phase 2 • Auth & RBAC Active
-              <br />
-              JWT Stateless • Native Mongo
+              <strong>BugBoard Workspace</strong>
+              <span>High-Performance Tracker</span>
             </div>
           </div>
         </aside>

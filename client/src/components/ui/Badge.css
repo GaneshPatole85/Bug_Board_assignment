@@ -112,8 +112,6 @@
   border-radius: var(--radius-xs);
   font-size: 0.72rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .role-badge-admin {

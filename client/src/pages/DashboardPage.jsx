@@ -85,7 +85,7 @@ export const DashboardPage = () => {
         <div className="page-header-info">
           <div className="dashboard-title-row">
             <h1 className="page-title">Engineering Dashboard</h1>
-            <span className="key-badge">Live Console</span>
+            <span className="key-badge">Live console</span>
           </div>
           <p className="page-description">
             Real-time project issue tracking, personal work queue, and workflow audit logs for {user?.name}.
@@ -104,20 +104,20 @@ export const DashboardPage = () => {
 
       {/* Quick Navigation Filter Chips */}
       <div className="filter-chips-bar" id="dashboard-quick-chips">
-        <span className="chips-label">Quick Filters:</span>
+        <span className="chips-label">Quick filters:</span>
         <button
           className="filter-chip"
           onClick={() => handleChipClick('/issues')}
           title="View all tracked issues"
         >
-          All Issues ({totalIssues})
+          All issues ({totalIssues})
         </button>
         <button
           className="filter-chip chip-assigned"
           onClick={() => handleChipClick(`/issues?assignee=${user?._id || user?.id}`)}
           title="Issues assigned to you"
         >
-          👤 Assigned to Me ({assignedCount})
+          👤 Assigned to me ({assignedCount})
         </button>
         <button
           className="filter-chip"
@@ -129,7 +129,7 @@ export const DashboardPage = () => {
           className="filter-chip"
           onClick={() => handleChipClick('/issues?status=In%20Progress')}
         >
-          In Progress ({byStatus['In Progress'] || 0})
+          In progress ({byStatus['In Progress'] || 0})
         </button>
         <button
           className="filter-chip"
@@ -141,7 +141,7 @@ export const DashboardPage = () => {
           className="filter-chip chip-critical"
           onClick={() => handleChipClick('/issues?severity=Critical')}
         >
-          Critical Bugs ({bySeverity.Critical || 0})
+          Critical bugs ({bySeverity.Critical || 0})
         </button>
       </div>
 
@@ -156,8 +156,8 @@ export const DashboardPage = () => {
           title="Click to view all issues"
         >
           <div className="stat-card-header">
-            <span className="stat-category-label">Repository Volume</span>
-            <span className="stat-badge-accent">Total Issues</span>
+            <span className="stat-category-label">Repository volume</span>
+            <span className="stat-badge-accent">Total issues</span>
           </div>
           <div className="stat-main-number font-mono">{totalIssues}</div>
 
@@ -184,7 +184,7 @@ export const DashboardPage = () => {
           role="button"
           tabIndex={0}
         >
-          <span className="stat-category-label">Awaiting Work</span>
+          <span className="stat-category-label">Awaiting work</span>
           <div className="tile-number-row">
             <span className="tile-number font-mono">{byStatus.Open || 0}</span>
             <StatusBadge status="Open" />
@@ -198,7 +198,7 @@ export const DashboardPage = () => {
           role="button"
           tabIndex={0}
         >
-          <span className="stat-category-label">In Development</span>
+          <span className="stat-category-label">In development</span>
           <div className="tile-number-row">
             <span className="tile-number font-mono">{byStatus['In Progress'] || 0}</span>
             <StatusBadge status="In Progress" />
@@ -212,7 +212,7 @@ export const DashboardPage = () => {
           role="button"
           tabIndex={0}
         >
-          <span className="stat-category-label">QA Review</span>
+          <span className="stat-category-label">QA review</span>
           <div className="tile-number-row">
             <span className="tile-number font-mono">{byStatus.Testing || 0}</span>
             <StatusBadge status="Testing" />
@@ -226,7 +226,7 @@ export const DashboardPage = () => {
           role="button"
           tabIndex={0}
         >
-          <span className="stat-category-label">High Risk</span>
+          <span className="stat-category-label">High risk</span>
           <div className="tile-number-row">
             <span className="tile-number font-mono" style={{ color: 'var(--priority-urgent)' }}>
               {bySeverity.Critical || 0}
@@ -243,7 +243,7 @@ export const DashboardPage = () => {
         <div className="dashboard-section console-card" id="assigned-to-me-section">
           <div className="section-title-bar">
             <div className="section-heading-group">
-              <h2 className="section-title">Assigned to Me</h2>
+              <h2 className="section-title">Assigned to me</h2>
               <span className="count-badge font-mono">{assignedCount}</span>
             </div>
             {assignedCount > 0 && (
@@ -310,7 +310,7 @@ export const DashboardPage = () => {
         {/* Right Column: Live Audit Activity Feed */}
         <div className="dashboard-section console-card" id="recent-activity-section">
           <div className="section-title-bar">
-            <h2 className="section-title">Audit Activity Feed</h2>
+            <h2 className="section-title">Audit activity feed</h2>
             <span className="stat-subtext">Recent system mutations</span>
           </div>
 

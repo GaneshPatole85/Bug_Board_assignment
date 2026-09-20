@@ -12,7 +12,7 @@ export const CommentList = () => {
         </div>
         <h4 className="comment-placeholder-title">Discussion & Comments</h4>
         <p className="comment-placeholder-desc">
-          Collaborative issue discussions and threaded comments will be implemented in <strong>Phase 4</strong>.
+          Collaborative issue discussions and threaded comments will appear here as team members comment on this issue.
         </p>
       </div>
     </div>

@@ -196,13 +196,13 @@ export const IssueDetailPage = () => {
             </div>
           </div>
 
-          {/* Discussion / Comments Section (Phase 4 Scaffold) */}
+          {/* Discussion / Comments Section */}
           <div className="issue-section-card console-card">
             <h3 className="section-heading">Discussion</h3>
             <CommentList />
           </div>
 
-          {/* Real Audit Activity Timeline (Part A / Phase 3) */}
+          {/* Activity Timeline */}
           <div className="issue-section-card console-card">
             <h3 className="section-heading">Activity Audit Trail</h3>
             <ActivityTimeline activities={activities} loading={loadingActivities} />
@@ -222,7 +222,7 @@ export const IssueDetailPage = () => {
 
             {/* Transition Controls Gated by Current State & User Role */}
             <div className="transition-triggers-box" id="transition-triggers-box">
-              <span className="triggers-label">Workflow Actions:</span>
+              <span className="triggers-label">Workflow actions:</span>
               {legalTransitions.length === 0 ? (
                 <span className="no-transitions-hint">
                   No next status transitions permitted for your role ({user.role}) from {issue.status}.

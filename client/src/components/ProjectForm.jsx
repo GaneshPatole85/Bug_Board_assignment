@@ -127,7 +127,7 @@ export const ProjectForm = ({
 
         <div className="form-group">
           <label htmlFor="project-name" className="form-label">
-            Project Name <span className="req">*</span>
+            Project name <span className="req">*</span>
           </label>
           <input
             id="project-name"
@@ -143,7 +143,7 @@ export const ProjectForm = ({
 
         <div className="form-group">
           <label htmlFor="project-key" className="form-label">
-            Project Key <span className="req">*</span>
+            Project key <span className="req">*</span>
           </label>
           <input
             id="project-key"
@@ -180,7 +180,7 @@ export const ProjectForm = ({
 
         <div className="form-group">
           <label className="form-label">
-            Team Members
+            Team members
           </label>
           <span className="form-hint" style={{ marginBottom: '8px', display: 'block' }}>
             Select users authorized to report, view, and transition issues in this project.
@@ -224,7 +224,7 @@ export const ProjectForm = ({
             isLoading={isSubmitting}
             id="submit-project-btn"
           >
-            {isEdit ? 'Save Changes' : 'Create Project'}
+            {isEdit ? 'Save changes' : 'Create project'}
           </Button>
         </div>
       </form>

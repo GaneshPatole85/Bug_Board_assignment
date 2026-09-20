@@ -50,7 +50,8 @@
 
 .filter-select:focus {
   border-color: var(--color-accent);
-  outline: none;
+  outline: 2px solid rgba(14, 124, 123, 0.15);
+  outline-offset: 0;
 }
 
 .filter-reset-wrapper {
