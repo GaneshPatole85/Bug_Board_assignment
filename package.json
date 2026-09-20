@@ -5,6 +5,7 @@
   "description": "BugBoard — Bug & Issue Tracking System (MERN Stack)",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:mem": "npm --prefix server run dev:mem",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "install:all": "npm install && npm --prefix server install && npm --prefix client install",

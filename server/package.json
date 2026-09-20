@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon --watch src src/server.js",
+    "dev:mem": "node src/dev-server.js",
     "test": "node --test tests/foundation.test.js tests/api.test.js",
     "test:auth": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/auth.test.js",
     "test:all": "npm run test && npm run test:auth",
