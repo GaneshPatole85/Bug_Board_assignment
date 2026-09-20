@@ -167,10 +167,16 @@ Per project guidelines, speculative indexing is strictly avoided. Indexes are cr
   priority: { type: String, required: true, enum: ['Low', 'Medium', 'High', 'Urgent'], default: 'Medium', index: true },
   status: { type: String, required: true, enum: ['Open', 'In Progress', 'Testing', 'Resolved', 'Closed'], default: 'Open', index: true },
   reporter: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  assignee: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
-  timestamps: true // createdAt is also indexed with { createdAt: -1 }
+  timestamps: true
 }
 ```
+**Phase 3 Explicit Index Strategy on Issues:**
+- `{ project: 1, status: 1 }` (Compound Index): Supports fast project-scoped status filtering (e.g. board / issues list queries).
+- `{ title: 'text', description: 'text' }` (Full-Text Search Index): Powers relevance-ranked `$text` keyword search across issue titles and descriptions.
+- `{ assignee: 1 }`: Fast lookup for user assignment and "Assigned to me" dashboard feeds.
+- `{ reporter: 1 }`: Fast lookup for user-reported issues.
+- `{ createdAt: -1 }`: Sort index for default chronological issue listing.
+
 
 ### 5.4 Comment Collection (`comments`)
 ```javascript

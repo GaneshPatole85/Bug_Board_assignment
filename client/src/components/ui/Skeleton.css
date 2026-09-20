@@ -1,0 +1,42 @@
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    rgba(226, 229, 234, 0.6) 50%,
+    var(--bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-xs);
+  height: 14px;
+}
+
+.skeleton-tr {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeleton-td {
+  padding: 12px 14px;
+}
+
+.skeleton-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-card-header,
+.skeleton-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

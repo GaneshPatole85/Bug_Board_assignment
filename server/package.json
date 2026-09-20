@@ -11,7 +11,8 @@
     "dev:mem": "node src/dev-server.js",
     "test": "node --test tests/foundation.test.js tests/api.test.js",
     "test:auth": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/auth.test.js",
-    "test:all": "npm run test && npm run test:auth",
+    "test:phase3": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/project.test.js tests/issue.test.js",
+    "test:all": "npm run test && npm run test:auth && npm run test:phase3",
     "seed": "node src/utils/seed.js"
   },
   "dependencies": {

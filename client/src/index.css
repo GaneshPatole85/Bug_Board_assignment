@@ -1,58 +1,106 @@
+/* ==========================================================================
+   BugBoard Design System Tokens — "Engineering Console" Identity (Phase 3)
+   ========================================================================== */
+
 :root {
-  /* Color Palette - Modern Deep Indigo Slate Theme */
-  --bg-primary: #0b0f19;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1f2937;
-  --bg-elevated: #1e293b;
-  --bg-hover: #283548;
+  /* Core Palette Tokens (Light Theme Baseline) */
+  --color-canvas: #F7F8FA;       /* Page background */
+  --color-surface: #FFFFFF;      /* Cards, table rows, panels */
+  --color-border: #E2E5EA;       /* Hairline dividers */
+  --color-ink: #14171F;          /* Primary text */
+  --color-slate: #5B6472;        /* Secondary / muted text */
+  --color-accent: #0E7C7B;       /* Primary actions, links, focus rings */
+  --color-accent-hover: #0a5f5e; /* Accent hover state */
+  --color-accent-ink: #FFFFFF;   /* Text on accent backgrounds */
 
-  --border-subtle: #1f293d;
-  --border-default: #374151;
-  --border-accent: #4f46e5;
+  /* Status Tokens (Paired with icon + text label — never color alone) */
+  --status-open: #5B6472;
+  --status-in-progress: #2B6CB0;
+  --status-testing: #7C5CBF;
+  --status-resolved: #1F9D6B;
+  --status-closed: #8A8F98;
 
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --text-inverse: #0b0f19;
+  /* Priority Tokens — Warm Ramp */
+  --priority-low: #8A8F98;
+  --priority-medium: #D6A419;
+  --priority-high: #E0793C;
+  --priority-urgent: #D64545;
 
-  --accent-primary: #6366f1;
-  --accent-primary-hover: #4f46e5;
-  --accent-secondary: #ec4899;
-  --accent-glow: rgba(99, 102, 241, 0.25);
+  /* Severity Tokens — Cool / Violet Ramp */
+  --severity-low: #5B6472;
+  --severity-medium: #4C6FDC;
+  --severity-high: #8547D1;
+  --severity-critical: #B0234B;
 
-  --status-success: #10b981;
-  --status-success-bg: rgba(16, 185, 129, 0.12);
-  --status-warning: #f59e0b;
-  --status-warning-bg: rgba(245, 158, 11, 0.12);
-  --status-danger: #ef4444;
-  --status-danger-bg: rgba(239, 68, 68, 0.12);
-  --status-info: #3b82f6;
-  --status-info-bg: rgba(59, 130, 246, 0.12);
+  /* Legacy & Helper Aliases */
+  --bg-primary: var(--color-canvas);
+  --bg-secondary: var(--color-surface);
+  --bg-tertiary: #EEF0F4;
+  --bg-hover: #F0F2F5;
+  --border-subtle: var(--color-border);
+  --border-default: #CBD0D8;
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-slate);
+  --text-muted: #8A8F98;
+  --accent-primary: var(--color-accent);
+  --accent-primary-hover: var(--color-accent-hover);
+
+  /* Status Light Backgrounds */
+  --status-open-bg: rgba(91, 100, 114, 0.1);
+  --status-in-progress-bg: rgba(43, 108, 176, 0.1);
+  --status-testing-bg: rgba(124, 92, 191, 0.1);
+  --status-resolved-bg: rgba(31, 157, 107, 0.1);
+  --status-closed-bg: rgba(138, 143, 152, 0.12);
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Elevation & Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.35), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.45), 0 4px 6px -4px rgba(0, 0, 0, 0.35);
-  --shadow-glow: 0 0 25px var(--accent-glow);
-
-  /* Layout Measurements */
-  --header-height: 64px;
-  --sidebar-width: 260px;
-  --sidebar-collapsed-width: 72px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  /* Dimensions & Shapes */
+  --header-height: 56px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-full: 9999px;
 
+  /* Elevation (Hairline borders prioritized over heavy drop shadows) */
+  --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
   /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Dark Mode Token Override Block */
+[data-theme="dark"] {
+  --color-canvas: #0F1117;
+  --color-surface: #171A21;
+  --color-border: #242933;
+  --color-ink: #F0F3F7;
+  --color-slate: #8A92A0;
+  --color-accent: #17A398;
+  --color-accent-hover: #128279;
+  --color-accent-ink: #FFFFFF;
+
+  --bg-primary: var(--color-canvas);
+  --bg-secondary: var(--color-surface);
+  --bg-tertiary: #1E232D;
+  --bg-hover: #262D3A;
+  --border-subtle: var(--color-border);
+  --border-default: #333A48;
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-slate);
+
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* Reset & Base Styles */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -63,9 +111,10 @@ html, body {
   height: 100%;
   width: 100%;
   font-family: var(--font-sans);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  font-size: 15px; /* Base 15px body for dense technical console */
   line-height: 1.5;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -74,6 +123,12 @@ html, body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Focus Rings (Accessibility Floor) */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 a {
@@ -86,139 +141,121 @@ button {
   border: none;
   background: none;
   font-family: inherit;
+  font-size: inherit;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--border-default);
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
 }
 
-/* Typography Utilities */
+/* Typography Scale */
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-ink);
 }
 
-/* Reusable UI Utility Classes */
+h1 { font-size: 1.625rem; } /* 26px */
+h2 { font-size: 1.25rem; }  /* 20px */
+h3 { font-size: 1.05rem; }  /* ~17px */
+
+/* Data Identifiers strictly in JetBrains Mono */
+.font-mono,
+.key-badge,
+.timestamp-mono,
+.issue-key {
+  font-family: var(--font-mono);
+}
+
+/* Page Layout Utilities */
 .page-container {
-  padding: 2rem;
-  max-width: 1400px;
+  padding: 1.5rem 2rem;
+  max-width: 1440px;
   margin: 0 auto;
   width: 100%;
 }
 
 .page-header {
-  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.page-header-info {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .page-title {
-  font-size: 1.875rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  background: linear-gradient(135deg, #ffffff 0%, #9ca3af 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
 }
 
 .page-description {
-  color: var(--text-secondary);
-  font-size: 0.975rem;
+  color: var(--color-slate);
+  font-size: 0.9rem;
 }
 
-.card {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 1.75rem;
-  box-shadow: var(--shadow-md);
-  transition: border-color var(--transition-normal);
+/* Card Primitive */
+.console-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-subtle);
+  transition: border-color var(--transition-fast);
 }
 
-.card:hover {
+.console-card:hover {
   border-color: var(--border-default);
 }
 
-.card-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  color: var(--text-primary);
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD0D8;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-slate);
 }
 
-.card-text {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.6;
+/* Accessibility: Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.badge-info {
-  background-color: var(--status-info-bg);
-  color: var(--status-info);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-}
-
-.badge-success {
-  background-color: var(--status-success-bg);
-  color: var(--status-success);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-}
-
-.badge-warning {
-  background-color: var(--status-warning-bg);
-  color: var(--status-warning);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-}
-
-.grid-cols-2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-}
-
-.grid-cols-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
+/* Responsive Breakpoint Helpers */
 @media (max-width: 1024px) {
-  .grid-cols-3 {
-    grid-template-columns: repeat(2, 1fr);
+  .page-container {
+    padding: 1.25rem 1.5rem;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .page-container {
-    padding: 1.25rem;
+    padding: 1rem;
   }
-  .grid-cols-2, .grid-cols-3 {
-    grid-template-columns: 1fr;
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

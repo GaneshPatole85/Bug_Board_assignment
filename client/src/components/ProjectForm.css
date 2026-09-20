@@ -1,0 +1,117 @@
+.project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-alert-error {
+  padding: 8px 12px;
+  background-color: rgba(214, 69, 69, 0.1);
+  border: 1px solid rgba(214, 69, 69, 0.25);
+  color: var(--priority-urgent);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.form-label .req {
+  color: var(--priority-urgent);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  padding: 8px 10px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  transition: border-color var(--transition-fast);
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.form-input:disabled {
+  background-color: var(--bg-tertiary);
+  cursor: not-allowed;
+  color: var(--color-slate);
+}
+
+.form-hint {
+  font-size: 0.78rem;
+  color: var(--color-slate);
+}
+
+.members-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  background-color: var(--color-canvas);
+}
+
+.member-select-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all var(--transition-fast);
+}
+
+.member-select-item.selected {
+  border-color: var(--color-accent);
+  background-color: rgba(14, 124, 123, 0.05);
+}
+
+.member-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+}
+
+.member-name {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.member-role {
+  font-size: 0.72rem;
+  color: var(--color-slate);
+}
+
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 6px;
+}

@@ -77,7 +77,15 @@ const issueSchema = new mongoose.Schema(
   }
 );
 
-// Explicit index on createdAt for sorting and timeline queries (as justified by filter requirements)
+// Explicit indexes for Phase 3 query patterns:
+// 1. Compound index for project-scoped status filtering
+issueSchema.index({ project: 1, status: 1 });
+
+// 2. Full-text search index across issue title and description
+issueSchema.index({ title: 'text', description: 'text' });
+
+// 3. Sorting index for default ordering (-createdAt)
 issueSchema.index({ createdAt: -1 });
 
 export const Issue = mongoose.model('Issue', issueSchema);
+

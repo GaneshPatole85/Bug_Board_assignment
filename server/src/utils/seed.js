@@ -1,7 +1,15 @@
 import mongoose from 'mongoose';
 import { env } from '../config/env.js';
 import { User } from '../models/User.js';
+import { Project } from '../models/Project.js';
+import { Issue } from '../models/Issue.js';
+import { Activity } from '../models/Activity.js';
 import { ROLES } from '../constants/roles.js';
+import {
+  ISSUE_STATUS,
+  ISSUE_PRIORITY,
+  ISSUE_SEVERITY,
+} from '../constants/issueWorkflow.js';
 import { logger } from './logger.js';
 
 export const SEED_ACCOUNTS = [
@@ -25,6 +33,118 @@ export const SEED_ACCOUNTS = [
   },
 ];
 
+export const seedSampleData = async () => {
+  const users = {};
+  for (const account of SEED_ACCOUNTS) {
+    let user = await User.findOne({ email: account.email });
+    if (!user) {
+      user = new User({
+        name: account.name,
+        email: account.email,
+        passwordHash: account.password,
+        role: account.role,
+      });
+      await user.save();
+      console.log(`✅ Created user: ${account.name} (${account.role})`);
+    }
+    users[account.role] = user;
+  }
+
+  // Seed Projects
+  let proj1 = await Project.findOne({ key: 'CORE' });
+  if (!proj1) {
+    proj1 = await Project.create({
+      name: 'Core Platform Engine',
+      key: 'CORE',
+      description: 'Distributed event pipeline, auth subsystem, and persistence engine.',
+      members: [users[ROLES.ADMIN]._id, users[ROLES.DEVELOPER]._id, users[ROLES.TESTER]._id],
+    });
+    console.log('✅ Created project: Core Platform Engine (CORE)');
+  }
+
+  let proj2 = await Project.findOne({ key: 'UI' });
+  if (!proj2) {
+    proj2 = await Project.create({
+      name: 'Web Interface Console',
+      key: 'UI',
+      description: 'React SPA engineering console, responsive layouts, and data grids.',
+      members: [users[ROLES.ADMIN]._id, users[ROLES.DEVELOPER]._id, users[ROLES.TESTER]._id],
+    });
+    console.log('✅ Created project: Web Interface Console (UI)');
+  }
+
+  // Seed sample issues
+  const existingIssuesCount = await Issue.countDocuments();
+  if (existingIssuesCount === 0) {
+    const sampleIssues = [
+      {
+        title: 'Memory leak under sustained high socket traffic',
+        description: 'Buffer retention in TCP connection handler causes 2MB/min heap growth under load.',
+        project: proj1._id,
+        severity: ISSUE_SEVERITY.CRITICAL,
+        priority: ISSUE_PRIORITY.URGENT,
+        status: ISSUE_STATUS.OPEN,
+        reporter: users[ROLES.TESTER]._id,
+        assignee: users[ROLES.DEVELOPER]._id,
+      },
+      {
+        title: 'JWT access token validation fails on clock skew > 500ms',
+        description: 'Need to configure 5s clock tolerance leeway in verification options.',
+        project: proj1._id,
+        severity: ISSUE_SEVERITY.HIGH,
+        priority: ISSUE_PRIORITY.HIGH,
+        status: ISSUE_STATUS.IN_PROGRESS,
+        reporter: users[ROLES.DEVELOPER]._id,
+        assignee: users[ROLES.DEVELOPER]._id,
+      },
+      {
+        title: 'Database connection retry backoff missing jitter',
+        description: 'Thundering herd on replica set failover causes ephemeral connection storm.',
+        project: proj1._id,
+        severity: ISSUE_SEVERITY.MEDIUM,
+        priority: ISSUE_PRIORITY.MEDIUM,
+        status: ISSUE_STATUS.TESTING,
+        reporter: users[ROLES.DEVELOPER]._id,
+        assignee: users[ROLES.DEVELOPER]._id,
+      },
+      {
+        title: 'Keyboard focus ring clipped on high DPI displays',
+        description: 'Outline offset clips against overflow-hidden card containers at 150% scaling.',
+        project: proj2._id,
+        severity: ISSUE_SEVERITY.LOW,
+        priority: ISSUE_PRIORITY.LOW,
+        status: ISSUE_STATUS.RESOLVED,
+        reporter: users[ROLES.TESTER]._id,
+        assignee: users[ROLES.DEVELOPER]._id,
+      },
+      {
+        title: 'Mobile filter bottom-sheet scroll chaining bug',
+        description: 'Scrolling inside bottom sheet activates background window scroll on iOS Safari.',
+        project: proj2._id,
+        severity: ISSUE_SEVERITY.HIGH,
+        priority: ISSUE_PRIORITY.HIGH,
+        status: ISSUE_STATUS.OPEN,
+        reporter: users[ROLES.TESTER]._id,
+        assignee: null,
+      },
+    ];
+
+    for (const issueData of sampleIssues) {
+      const issue = await Issue.create(issueData);
+      await Activity.create({
+        issue: issue._id,
+        actor: users[ROLES.ADMIN]._id,
+        action: 'CREATED',
+        field: 'issue',
+        oldValue: null,
+        newValue: issue.title,
+        createdAt: new Date(),
+      });
+      console.log(`✅ Created issue: ${issue.title} [${issue.status}]`);
+    }
+  }
+};
+
 export const seedDatabase = async () => {
   try {
     logger.info({ uri: env.MONGODB_URI }, 'Connecting to MongoDB for seeding...');
@@ -34,24 +154,10 @@ export const seedDatabase = async () => {
     logger.info('Connected to MongoDB.');
 
     console.log('\n=============================================================');
-    console.log('🌱 BugBoard Database Seeder — Phase 2 Sample Login Accounts');
+    console.log('🌱 BugBoard Database Seeder — Projects, Issues, and Users');
     console.log('=============================================================\n');
 
-    for (const account of SEED_ACCOUNTS) {
-      const existing = await User.findOne({ email: account.email });
-      if (existing) {
-        console.log(`ℹ️ Account already exists: ${account.email} (${account.role}) - Skipping`);
-      } else {
-        const user = new User({
-          name: account.name,
-          email: account.email,
-          passwordHash: account.password, // Pre-save hook will hash with bcrypt cost factor 12
-          role: account.role,
-        });
-        await user.save();
-        console.log(`✅ Created: ${account.name} | ${account.email} | ${account.role}`);
-      }
-    }
+    await seedSampleData();
 
     console.log('\n-------------------------------------------------------------');
     console.log('🔑 SAMPLE CREDENTIALS FOR REVIEWERS:');

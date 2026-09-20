@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { RoleBadge } from '../components/ui/Badge.jsx';
 import './MainLayout.css';
 
 export const MainLayout = () => {
@@ -86,7 +87,7 @@ export const MainLayout = () => {
               </svg>
             </div>
             <span className="brand-name">BugBoard</span>
-            <span className="brand-badge">Phase 2 • Auth & RBAC</span>
+            <span className="brand-badge">Phase 3 • Core Product</span>
           </div>
         </div>
 
@@ -101,16 +102,10 @@ export const MainLayout = () => {
               style={{
                 backgroundColor:
                   backendHealth.status === 'online'
-                    ? 'var(--status-success)'
+                    ? 'var(--status-resolved)'
                     : backendHealth.status === 'checking'
-                    ? 'var(--status-warning)'
-                    : 'var(--status-danger)',
-                boxShadow:
-                  backendHealth.status === 'online'
-                    ? '0 0 8px var(--status-success)'
-                    : backendHealth.status === 'checking'
-                    ? '0 0 8px var(--status-warning)'
-                    : '0 0 8px var(--status-danger)',
+                    ? 'var(--priority-medium)'
+                    : 'var(--priority-urgent)',
               }}
             />
             <span>{backendHealth.message}</span>
@@ -119,25 +114,23 @@ export const MainLayout = () => {
           {/* User Session Bar */}
           {isAuthenticated && user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }} id="user-header-profile">
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-ink)' }}>
                   {user.name}
                 </span>
-                <span className={`badge ${getRoleBadgeClass(user.role)}`} style={{ fontSize: '0.65rem' }}>
-                  {user.role}
-                </span>
+                <RoleBadge role={user.role} />
               </div>
               <button
                 onClick={handleLogout}
                 id="logout-btn"
                 style={{
                   backgroundColor: 'var(--bg-tertiary)',
-                  color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '0.4rem 0.75rem',
+                  color: 'var(--color-slate)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-xs)',
+                  padding: '0.35rem 0.65rem',
                   fontSize: '0.8rem',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all var(--transition-fast)',
                 }}

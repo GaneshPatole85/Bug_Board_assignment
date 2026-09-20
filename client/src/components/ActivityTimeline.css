@@ -1,0 +1,79 @@
+.activity-timeline {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: 20px;
+  margin-top: 12px;
+}
+
+.activity-timeline::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: 2px;
+  background-color: var(--color-border);
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 4px;
+}
+
+.timeline-bullet {
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-accent);
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.timeline-actor {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.timeline-role {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-slate);
+}
+
+.timeline-time {
+  font-size: 0.75rem;
+  color: var(--color-slate);
+}
+
+.timeline-detail {
+  font-size: 0.825rem;
+  color: var(--color-slate);
+}
+
+.activity-loading,
+.activity-empty {
+  font-size: 0.85rem;
+  color: var(--color-slate);
+  padding: 12px 0;
+}

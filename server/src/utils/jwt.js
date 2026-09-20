@@ -8,7 +8,14 @@ import { env } from '../config/env.js';
  * @returns {string} Signed JWT
  */
 export const signToken = (payload, expiresIn = env.JWT_EXPIRES_IN) => {
-  return jwt.sign(payload, env.JWT_SECRET, {
+  const plainPayload =
+    payload && typeof payload.toObject === 'function'
+      ? { sub: payload._id.toString(), role: payload.role }
+      : payload && payload._id
+      ? { sub: payload._id.toString(), role: payload.role }
+      : payload;
+
+  return jwt.sign(plainPayload, env.JWT_SECRET, {
     expiresIn,
     algorithm: 'HS256',
   });

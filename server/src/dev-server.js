@@ -16,22 +16,13 @@ const startDev = async () => {
   const { env } = await import('./config/env.js');
   const { User } = await import('./models/User.js');
 
+  const { seedSampleData } = await import('./utils/seed.js');
+
   env.MONGODB_URI = uri;
   await connectDB();
 
-  // Automatically seed the 3 interview demo accounts
-  for (const account of SEED_ACCOUNTS) {
-    const existing = await User.findOne({ email: account.email });
-    if (!existing) {
-      const user = new User({
-        name: account.name,
-        email: account.email,
-        passwordHash: account.password, // Pre-save hook hashes with bcrypt
-        role: account.role,
-      });
-      await user.save();
-    }
-  }
+  // Automatically seed the sample users, projects, and issues
+  await seedSampleData();
 
   const server = app.listen(env.PORT, () => {
     logger.info(`BugBoard API server running on http://localhost:${env.PORT}/api/${env.API_VERSION}`);

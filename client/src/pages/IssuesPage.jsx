@@ -1,24 +1,352 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import apiClient from '../api/client.js';
+import { Button } from '../components/ui/Button.jsx';
+import { Drawer } from '../components/ui/Drawer.jsx';
+import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow.jsx';
+import { EmptyState } from '../components/ui/EmptyState.jsx';
+import { Pagination } from '../components/ui/Pagination.jsx';
+import IssueFilters from '../components/IssueFilters.jsx';
+import IssueRow from '../components/IssueRow.jsx';
+import IssueCard from '../components/IssueCard.jsx';
+import IssueForm from '../components/IssueForm.jsx';
+import './IssuesPage.css';
 
 export const IssuesPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [issues, setIssues] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Pagination state from API
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Search and Sort
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('-createdAt');
+
+  // Filters state (defaults synced from URL params)
+  const initialProjectId = searchParams.get('project') || '';
+  const [filters, setFilters] = useState({
+    project: initialProjectId,
+    status: searchParams.get('status') || '',
+    priority: searchParams.get('priority') || '',
+    severity: searchParams.get('severity') || '',
+    assignee: searchParams.get('assignee') || '',
+  });
+
+  // Modals & Drawers
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+
+  // Keep search params synchronized with filter changes
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+    if (filters.project) nextParams.set('project', filters.project);
+    if (filters.status) nextParams.set('status', filters.status);
+    if (filters.priority) nextParams.set('priority', filters.priority);
+    if (filters.severity) nextParams.set('severity', filters.severity);
+    if (filters.assignee) nextParams.set('assignee', filters.assignee);
+    setSearchParams(nextParams, { replace: true });
+  }, [filters, setSearchParams]);
+
+  // Load projects & users for filter dropdowns
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      apiClient.get('/projects').catch(() => ({ data: [] })),
+      apiClient.get('/users').catch(() => ({ data: [] })),
+    ]).then(([projRes, usersRes]) => {
+      if (isMounted) {
+        setProjects(projRes.data || []);
+        setUsers(usersRes.data || []);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch issues with server-side query parameters
+  const fetchIssues = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+      params.append('sort', sortOrder);
+
+      if (filters.project) params.append('project', filters.project);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.priority) params.append('priority', filters.priority);
+      if (filters.severity) params.append('severity', filters.severity);
+      if (filters.assignee) params.append('assignee', filters.assignee);
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+
+      const res = await apiClient.get(`/issues?${params.toString()}`);
+      setIssues(res.data || []);
+      setTotal(res.total || 0);
+      setTotalPages(res.totalPages || 1);
+    } catch (err) {
+      setError(err.message || 'Failed to load issues. Please retry.');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, sortOrder, filters, searchQuery]);
+
+  useEffect(() => {
+    fetchIssues();
+  }, [fetchIssues]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setPage(1);
+    fetchIssues();
+  };
+
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      project: '',
+      status: '',
+      priority: '',
+      severity: '',
+      assignee: '',
+    });
+    setSearchQuery('');
+    setPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    filters.project ||
+    filters.status ||
+    filters.priority ||
+    filters.severity ||
+    filters.assignee ||
+    searchQuery.trim()
+  );
+
+  const selectedProjectObj = useMemo(() => {
+    return projects.find((p) => p._id === filters.project);
+  }, [projects, filters.project]);
+
   return (
     <div className="page-container" id="issues-page">
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <h1 className="page-title">Issues & Bug Tracking</h1>
-          <span className="badge badge-info">Phase 1 Placeholder</span>
+        <div className="page-header-info">
+          <h1 className="page-title">
+            Issues {selectedProjectObj ? `— ${selectedProjectObj.name}` : ''}
+          </h1>
+          <p className="page-description">
+            Live technical issue tracker with server-side query filters, status workflow transitions, and audit logs.
+          </p>
         </div>
-        <p className="page-description">
-          Issue tracking, server-side filtering, workflow transition validation, comments, and activity audit logs will be implemented in Phase 3 & 4.
-        </p>
+
+        <Button
+          variant="primary"
+          size="md"
+          onClick={() => setIsFormOpen(true)}
+          id="create-issue-trigger-btn"
+        >
+          New issue
+        </Button>
       </div>
 
-      <div className="card">
-        <h2 className="card-title">Issues Tracker</h2>
-        <p className="card-text">
-          The <code>Issue</code> schema is configured with fields: title, description, project, severity (Low/Medium/High/Critical), priority (Low/Medium/High/Urgent), status (Open/In Progress/Testing/Resolved/Closed), reporter, assignee, and query indexes.
-        </p>
+      {/* Toolbar: Search, Filters Trigger, Sort Dropdown */}
+      <div className="issues-toolbar">
+        <form onSubmit={handleSearchSubmit} className="search-form">
+          <input
+            type="search"
+            className="search-input"
+            placeholder="Search issues by title or description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            id="issue-search-input"
+          />
+          <Button type="submit" variant="secondary" size="sm" id="search-submit-btn">
+            Search
+          </Button>
+        </form>
+
+        <div className="toolbar-right-controls">
+          {/* Mobile Filter Sheet Trigger */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsFilterDrawerOpen(true)}
+            className="mobile-filter-trigger-btn"
+            id="mobile-filters-btn"
+          >
+            Filters {hasActiveFilters && '•'}
+          </Button>
+
+          <div className="sort-control-wrapper">
+            <label htmlFor="issues-sort" className="sort-label">Sort:</label>
+            <select
+              id="issues-sort"
+              className="sort-select"
+              value={sortOrder}
+              onChange={(e) => {
+                setSortOrder(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="-createdAt">Newest first</option>
+              <option value="createdAt">Oldest first</option>
+              <option value="priority">Priority (ascending)</option>
+              <option value="-priority">Priority (descending)</option>
+              <option value="severity">Severity (ascending)</option>
+              <option value="-severity">Severity (descending)</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+        </div>
       </div>
+
+      {/* Desktop Inline Filters Bar */}
+      <div className="desktop-filters-wrapper">
+        <IssueFilters
+          filters={filters}
+          onChange={handleFilterChange}
+          onReset={handleResetFilters}
+          projects={projects}
+          users={users}
+          isMobileDrawer={false}
+        />
+      </div>
+
+      {/* Mobile Filters Drawer */}
+      <Drawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        title="Filter Issues"
+        position="bottom"
+        id="mobile-filters-drawer"
+      >
+        <IssueFilters
+          filters={filters}
+          onChange={handleFilterChange}
+          onReset={() => {
+            handleResetFilters();
+            setIsFilterDrawerOpen(false);
+          }}
+          projects={projects}
+          users={users}
+          isMobileDrawer={true}
+        />
+        <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="primary" size="md" onClick={() => setIsFilterDrawerOpen(false)}>
+            Apply filters
+          </Button>
+        </div>
+      </Drawer>
+
+      {/* Error state */}
+      {error && (
+        <div className="error-banner" role="alert">
+          <span>{error}</span>
+          <Button variant="secondary" size="sm" onClick={fetchIssues}>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {/* Desktop / Tablet Table View */}
+      <div className="issues-desktop-table-container">
+        <table className="issues-table" id="issues-table">
+          <thead>
+            <tr>
+              <th className="th-key">Key</th>
+              <th className="th-title">Title</th>
+              <th className="th-status">Status</th>
+              <th className="th-priority">Priority</th>
+              <th className="th-severity">Severity</th>
+              <th className="th-assignee">Assignee</th>
+              <th className="th-reporter col-tablet-hide">Reporter</th>
+              <th className="th-date col-tablet-hide">Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <SkeletonRow key={i} columns={8} />
+              ))
+            ) : issues.length === 0 ? (
+              <tr>
+                <td colSpan={8}>
+                  <EmptyState
+                    title="No issues match criteria"
+                    description={
+                      hasActiveFilters
+                        ? 'No issues match the applied filters or search keywords. Try adjusting or clearing your filters.'
+                        : 'No issues exist in the selected project yet. Report the first issue to begin tracking.'
+                    }
+                    actionLabel={hasActiveFilters ? 'Clear all filters' : 'Create first issue'}
+                    onAction={hasActiveFilters ? handleResetFilters : () => setIsFormOpen(true)}
+                  />
+                </td>
+              </tr>
+            ) : (
+              issues.map((issue) => (
+                <IssueRow key={issue._id} issue={issue} />
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Stacked Cards List View */}
+      <div className="issues-mobile-cards-container">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))
+        ) : issues.length === 0 ? (
+          <EmptyState
+            title="No issues found"
+            description={
+              hasActiveFilters
+                ? 'No issues match your current filters.'
+                : 'No issues reported in this project yet.'
+            }
+            actionLabel={hasActiveFilters ? 'Clear filters' : 'Create issue'}
+            onAction={hasActiveFilters ? handleResetFilters : () => setIsFormOpen(true)}
+          />
+        ) : (
+          issues.map((issue) => (
+            <IssueCard key={issue._id} issue={issue} />
+          ))
+        )}
+      </div>
+
+      {/* Server Pagination */}
+      <Pagination
+        page={page}
+        limit={limit}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={(newPage) => setPage(newPage)}
+      />
+
+      {/* Create Issue Modal */}
+      <IssueForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSuccess={fetchIssues}
+        preselectedProjectId={filters.project}
+        projects={projects}
+      />
     </div>
   );
 };
