@@ -5,12 +5,25 @@ import { Activity } from '../models/Activity.js';
 import { ROLES } from '../constants/roles.js';
 import { workflowService } from './workflow.service.js';
 
+const POPULATE_ISSUE = [
+  {
+    path: 'project',
+    select: 'name key members',
+    populate: {
+      path: 'members',
+      select: 'name email role',
+    },
+  },
+  { path: 'reporter', select: 'name email role' },
+  { path: 'assignee', select: 'name email role' },
+];
+
 class IssueService {
   /**
    * Create a new issue.
    * - Validates target project exists and user is an authorized member (or Admin).
    * - Forces reporter to req.user.id server-side (Decision #1).
-   * - Validates assignee is an active project member (Decision #2).
+   * - Validates assignee is an active project member and Developer (Decision #2).
    */
   async createIssue(issueData, user) {
     const project = await Project.findById(issueData.project);
@@ -30,7 +43,7 @@ class IssueService {
       }
     }
 
-    // Assignee validation
+    // If assignee specified, must be member of project AND role Developer
     let assigneeId = null;
     if (issueData.assignee) {
       const isAssigneeMember = project.members.some(
@@ -41,9 +54,14 @@ class IssueService {
         error.statusCode = 422;
         throw error;
       }
-      const assigneeExists = await User.exists({ _id: issueData.assignee });
-      if (!assigneeExists) {
+      const assigneeUser = await User.findById(issueData.assignee);
+      if (!assigneeUser) {
         const error = new Error('Assignee user does not exist');
+        error.statusCode = 422;
+        throw error;
+      }
+      if (assigneeUser.role !== ROLES.DEVELOPER) {
+        const error = new Error('Issues can only be assigned to Developers');
         error.statusCode = 422;
         throw error;
       }
@@ -61,10 +79,7 @@ class IssueService {
       reporter: user.id, // Immutable server-side attribution
     });
 
-    return Issue.findById(issue._id)
-      .populate('project', 'name key')
-      .populate('reporter', 'name email role')
-      .populate('assignee', 'name email role');
+    return Issue.findById(issue._id).populate(POPULATE_ISSUE);
   }
 
   /**
@@ -167,10 +182,7 @@ class IssueService {
    * Get single issue details by ID. Verifies project authorization.
    */
   async getIssueById(issueId, user) {
-    const issue = await Issue.findById(issueId)
-      .populate('project', 'name key members')
-      .populate('reporter', 'name email role')
-      .populate('assignee', 'name email role');
+    const issue = await Issue.findById(issueId).populate(POPULATE_ISSUE);
 
     if (!issue) {
       const error = new Error('Issue not found');
@@ -181,7 +193,7 @@ class IssueService {
     // Verify project authorization
     if (user.role !== ROLES.ADMIN) {
       const isMember = issue.project.members.some(
-        (m) => m.toString() === user.id.toString()
+        (m) => (m._id || m).toString() === user.id.toString()
       );
       if (!isMember) {
         const error = new Error('Forbidden: You do not have access to this issue');
@@ -214,10 +226,7 @@ class IssueService {
 
     await issue.save();
 
-    return Issue.findById(issue._id)
-      .populate('project', 'name key')
-      .populate('reporter', 'name email role')
-      .populate('assignee', 'name email role');
+    return Issue.findById(issue._id).populate(POPULATE_ISSUE);
   }
 
   /**
@@ -255,10 +264,7 @@ class IssueService {
       createdAt: new Date(),
     });
 
-    return Issue.findById(issue._id)
-      .populate('project', 'name key')
-      .populate('reporter', 'name email role')
-      .populate('assignee', 'name email role');
+    return Issue.findById(issue._id).populate(POPULATE_ISSUE);
   }
 
   /**
@@ -285,6 +291,11 @@ class IssueService {
         error.statusCode = 422;
         throw error;
       }
+      if (userDoc.role !== ROLES.DEVELOPER) {
+        const error = new Error('Issues can only be assigned to Developers');
+        error.statusCode = 422;
+        throw error;
+      }
       targetAssignee = userDoc._id;
     }
 
@@ -303,10 +314,7 @@ class IssueService {
       createdAt: new Date(),
     });
 
-    return Issue.findById(issue._id)
-      .populate('project', 'name key')
-      .populate('reporter', 'name email role')
-      .populate('assignee', 'name email role');
+    return Issue.findById(issue._id).populate(POPULATE_ISSUE);
   }
 
   /**

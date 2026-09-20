@@ -48,7 +48,14 @@ export const IssueForm = ({
     }
 
     const matchedProject = projects.find((p) => p._id === projectId);
-    if (matchedProject && Array.isArray(matchedProject.members)) {
+    const hasPopulatedMembers =
+      matchedProject &&
+      Array.isArray(matchedProject.members) &&
+      matchedProject.members.length > 0 &&
+      typeof matchedProject.members[0] === 'object' &&
+      Boolean(matchedProject.members[0].role);
+
+    if (hasPopulatedMembers) {
       setProjectMembers(matchedProject.members);
     } else {
       // Fetch fresh project details to obtain populated members
@@ -218,18 +225,20 @@ export const IssueForm = ({
             onChange={(e) => setAssignee(e.target.value)}
           >
             <option value="">Unassigned</option>
-            {projectMembers.map((member) => {
-              const memId = member._id || member;
-              const memName = member.name || member.email || memId;
-              return (
-                <option key={memId} value={memId}>
-                  {memName} {member.role ? `(${member.role})` : ''}
-                </option>
-              );
-            })}
+            {projectMembers
+              .filter((m) => m.role === 'Developer')
+              .map((member) => {
+                const memId = member._id || member;
+                const memName = member.name || member.email || memId;
+                return (
+                  <option key={memId} value={memId}>
+                    {memName}
+                  </option>
+                );
+              })}
           </select>
           <span className="form-hint">
-            Assignee must be an authorized member of the selected project (server-enforced).
+            Bugs can only be assigned to Developers belonging to this project.
           </span>
         </div>
 

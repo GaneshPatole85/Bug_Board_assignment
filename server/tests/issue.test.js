@@ -119,6 +119,23 @@ describe('Issue API Endpoints & Workflow Engine (Phase 3)', () => {
       expect(res.body.message).toMatch(/active member of this project/i);
     });
 
+    test('2b. Assignee must be a Developer -> 422 if Admin or Tester', async () => {
+      const res = await request(app)
+        .post('/api/v1/issues')
+        .set('Authorization', `Bearer ${devToken}`)
+        .send({
+          title: 'Admin assignee test',
+          description: 'Attempting to assign bug to admin',
+          project: project._id.toString(),
+          severity: ISSUE_SEVERITY.MEDIUM,
+          priority: ISSUE_PRIORITY.MEDIUM,
+          assignee: adminUser._id.toString(), // Admin member of project
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.message).toMatch(/only be assigned to Developers/i);
+    });
+
     test('3. Creation rejects invalid or non-existent project id', async () => {
       const fakeProjectId = new mongoose.Types.ObjectId().toString();
 
@@ -327,6 +344,55 @@ describe('Issue API Endpoints & Workflow Engine (Phase 3)', () => {
       expect(activity).toBeDefined();
       expect(activity.field).toBe('assignee');
       expect(activity.newValue).toBe(devUser._id.toString());
+    });
+
+    test('Assignee change rejects assignment to Admin or Tester -> 422', async () => {
+      const issue = await Issue.create({
+        title: 'Assignee role test issue',
+        description: 'Testing non-developer assignee rejection',
+        project: project._id,
+        severity: ISSUE_SEVERITY.LOW,
+        priority: ISSUE_PRIORITY.LOW,
+        reporter: devUser._id,
+      });
+
+      // Attempt to assign to Admin
+      const resAdmin = await request(app)
+        .patch(`/api/v1/issues/${issue._id}/assignee`)
+        .set('Authorization', `Bearer ${devToken}`)
+        .send({ assignee: adminUser._id.toString() });
+
+      expect(resAdmin.status).toBe(422);
+      expect(resAdmin.body.message).toMatch(/only be assigned to Developers/i);
+
+      // Attempt to assign to Tester
+      const resTester = await request(app)
+        .patch(`/api/v1/issues/${issue._id}/assignee`)
+        .set('Authorization', `Bearer ${devToken}`)
+        .send({ assignee: testerUser._id.toString() });
+
+      expect(resTester.status).toBe(422);
+      expect(resTester.body.message).toMatch(/only be assigned to Developers/i);
+    });
+
+    test('Assignee change allows clearing assignee (unassigning) -> 200', async () => {
+      const issue = await Issue.create({
+        title: 'Unassign test issue',
+        description: 'Testing unassigning',
+        project: project._id,
+        severity: ISSUE_SEVERITY.LOW,
+        priority: ISSUE_PRIORITY.LOW,
+        reporter: devUser._id,
+        assignee: devUser._id,
+      });
+
+      const res = await request(app)
+        .patch(`/api/v1/issues/${issue._id}/assignee`)
+        .set('Authorization', `Bearer ${devToken}`)
+        .send({ assignee: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.assignee).toBeNull();
     });
   });
 

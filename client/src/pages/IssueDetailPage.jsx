@@ -74,6 +74,53 @@ export const IssueDetailPage = () => {
     fetchActivities();
   }, [fetchIssue, fetchActivities]);
 
+  const [projectMembers, setProjectMembers] = useState([]);
+
+  useEffect(() => {
+    if (!issue?.project) {
+      setProjectMembers([]);
+      return;
+    }
+
+    const members = Array.isArray(issue.project.members) ? issue.project.members : [];
+    const isPopulated =
+      members.length > 0 &&
+      typeof members[0] === 'object' &&
+      Boolean(members[0].role);
+
+    if (isPopulated) {
+      setProjectMembers(members);
+    } else {
+      const projId = issue.project._id || (typeof issue.project === 'string' ? issue.project : null);
+      if (projId) {
+        apiClient
+          .get(`/projects/${projId}`)
+          .then((res) => {
+            if (Array.isArray(res.data?.members)) {
+              setProjectMembers(res.data.members);
+            } else {
+              setProjectMembers(members);
+            }
+          })
+          .catch(() => {
+            setProjectMembers(members);
+          });
+      } else {
+        setProjectMembers(members);
+      }
+    }
+  }, [issue]);
+
+  // Bugs can strictly only be assigned to Developers
+  const assignableDevelopers = useMemo(() => {
+    return projectMembers.filter((m) => m && m.role === 'Developer');
+  }, [projectMembers]);
+
+  const currentAssigneeId = issue?.assignee?._id || (typeof issue?.assignee === 'string' ? issue.assignee : '');
+  const currentAssigneeInDevs = assignableDevelopers.some(
+    (dev) => (dev._id || dev).toString() === currentAssigneeId.toString()
+  );
+
   // Compute legal next status options for the current user's role
   const legalTransitions = useMemo(() => {
     if (!issue || !user) return [];
@@ -140,8 +187,6 @@ export const IssueDetailPage = () => {
   const projectKey = issue.project?.key || 'BUG';
   const serial = issue._id.toString().slice(-4).toUpperCase();
   const issueKey = `${projectKey}-${serial}`;
-
-  const projectMembers = issue.project?.members || [];
 
   return (
     <div className="page-container" id="issue-detail-page">
@@ -255,21 +300,36 @@ export const IssueDetailPage = () => {
             <select
               id="detail-assignee-select"
               className="meta-select"
-              value={issue.assignee?._id || issue.assignee || ''}
+              value={currentAssigneeId}
               disabled={isReassigning}
               onChange={(e) => handleAssigneeChange(e.target.value)}
             >
               <option value="">Unassigned</option>
-              {projectMembers.map((member) => {
-                const memId = member._id || member;
-                const memName = member.name || member.email || memId;
+              {currentAssigneeId && !currentAssigneeInDevs && (
+                <option value={currentAssigneeId}>
+                  {issue.assignee?.name || issue.assignee?.email || 'Current Assignee'} ({issue.assignee?.role || 'Assigned'})
+                </option>
+              )}
+              {assignableDevelopers.map((dev) => {
+                const devId = dev._id || dev;
+                const devName = dev.name || dev.email || 'Developer';
                 return (
-                  <option key={memId} value={memId}>
-                    {memName} {member.role ? `(${member.role})` : ''}
+                  <option key={devId} value={devId}>
+                    {devName} (Developer)
                   </option>
                 );
               })}
             </select>
+            <span
+              style={{
+                fontSize: '0.72rem',
+                color: 'var(--color-text-secondary)',
+                marginTop: '4px',
+                display: 'block',
+              }}
+            >
+              Bugs can only be assigned to Developers
+            </span>
           </div>
 
           {/* Priority */}
