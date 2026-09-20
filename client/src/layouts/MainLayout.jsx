@@ -122,20 +122,10 @@ export const MainLayout = () => {
               <button
                 onClick={handleLogout}
                 id="logout-btn"
-                style={{
-                  backgroundColor: 'var(--bg-tertiary)',
-                  color: 'var(--color-slate)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-xs)',
-                  padding: '0.35rem 0.65rem',
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)',
-                }}
+                className="header-logout-btn"
                 title="Sign out of current session"
               >
-                Sign Out
+                Sign out
               </button>
             </div>
           ) : (
@@ -212,68 +202,32 @@ export const MainLayout = () => {
             </NavLink>
           </div>
 
-          {/* Account Section */}
-          <div className="nav-section">
-            <span className="nav-heading">Authentication</span>
-            {!isAuthenticated ? (
-              <>
-                <NavLink
-                  to="/login"
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                  id="nav-login"
-                >
-                  <span className="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                    </svg>
-                  </span>
-                  <span>Sign In</span>
-                </NavLink>
-
-                <NavLink
-                  to="/register"
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                  id="nav-register"
-                >
-                  <span className="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                    </svg>
-                  </span>
-                  <span>Register</span>
-                </NavLink>
-              </>
-            ) : (
-              <div
-                style={{
-                  padding: '0.75rem',
-                  backgroundColor: 'var(--bg-tertiary)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {user.name}
+          <div className="sidebar-bottom">
+            {isAuthenticated && user && (
+              <div className="sidebar-user-card" id="sidebar-user-card">
+                <div className="sidebar-user-avatar">
+                  {user.name
+                    ? user.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()
+                    : 'U'}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                  {user.email}
+                <div className="sidebar-user-meta">
+                  <span className="sidebar-user-name" title={user.name}>{user.name}</span>
+                  <span className="sidebar-user-email" title={user.email}>{user.email}</span>
                 </div>
-                {/* 
-                  NOTE: Role indicator in UI is for UX awareness only.
-                  The backend Express middleware chains (authenticate, authorizeRole)
-                  strictly enforce all authorization boundaries.
-                */}
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  Role: <strong style={{ color: 'var(--accent-primary)' }}>{user.role}</strong>
-                </div>
+                <RoleBadge role={user.role} />
               </div>
             )}
-          </div>
 
-          <div className="sidebar-footer">
-            <div className="tech-info-card">
-              <strong>BugBoard Workspace</strong>
-              <span>High-Performance Tracker</span>
+            <div className="sidebar-footer">
+              <div className="tech-info-card">
+                <strong>BugBoard Workspace</strong>
+                <span>High-Performance Tracker</span>
+              </div>
             </div>
           </div>
         </aside>

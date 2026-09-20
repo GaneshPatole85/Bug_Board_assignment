@@ -54,6 +54,13 @@
   outline-offset: 0;
 }
 
+.filter-select.filter-active {
+  border-color: var(--color-accent);
+  background-color: rgba(14, 124, 123, 0.06);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
 .filter-reset-wrapper {
   margin-left: auto;
 }

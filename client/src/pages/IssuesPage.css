@@ -1,3 +1,24 @@
+/* ==========================================================================
+   IssuesPage.css — Modern Engineering Console Issue Tracker
+   ========================================================================== */
+
+.issues-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.results-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-slate);
+}
+
 .issues-toolbar {
   display: flex;
   align-items: center;
@@ -16,21 +37,57 @@
   min-width: 240px;
 }
 
-.search-input {
+.search-input-wrapper {
+  position: relative;
   flex: 1;
-  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--color-slate);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  padding: 7px 28px 7px 32px;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-ink);
   font-size: 0.85rem;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .search-input:focus {
   border-color: var(--color-accent);
   outline: 2px solid rgba(14, 124, 123, 0.15);
   outline-offset: 0;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--color-slate);
+  font-size: 0.75rem;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
+}
+
+.search-clear-btn:hover {
+  color: var(--color-ink);
 }
 
 .toolbar-right-controls {
@@ -52,17 +109,19 @@
 .sort-label {
   font-size: 0.8rem;
   color: var(--color-slate);
+  font-weight: 500;
 }
 
 .sort-select {
-  padding: 4px 8px;
+  padding: 5px 8px;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   color: var(--color-ink);
   font-size: 0.8rem;
-  height: 30px;
+  height: 32px;
   cursor: pointer;
+  transition: border-color var(--transition-fast);
 }
 
 .sort-select:focus {
@@ -71,12 +130,88 @@
   outline-offset: 0;
 }
 
+/* Active Filter Chips Bar */
+.active-filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  box-shadow: var(--shadow-subtle);
+}
+
+.active-filters-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-slate);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.active-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  background-color: rgba(14, 124, 123, 0.08);
+  border: 1px solid rgba(14, 124, 123, 0.25);
+  border-radius: var(--radius-full);
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.active-filter-pill strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.pill-remove-btn {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  opacity: 0.75;
+  transition: opacity var(--transition-fast);
+}
+
+.pill-remove-btn:hover {
+  opacity: 1;
+}
+
+.clear-all-pills-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--priority-urgent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.clear-all-pills-btn:hover {
+  text-decoration: underline;
+}
+
 /* Issues Table Container */
 .issues-desktop-table-container {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: var(--radius-md);
   overflow-x: auto;
+  box-shadow: var(--shadow-subtle);
 }
 
 .issues-table {
@@ -92,10 +227,29 @@
 
 .issues-table th {
   padding: 10px 14px;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   font-weight: 600;
   color: var(--color-slate);
   white-space: nowrap;
+}
+
+/* Empty Table Cell Seamless Integration */
+.table-empty-row {
+  background-color: var(--color-surface);
+}
+
+.table-empty-cell {
+  padding: 48px 24px !important;
+  text-align: center;
+}
+
+.table-empty-cell .empty-state-container {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  box-shadow: none !important;
+  max-width: 440px;
 }
 
 /* Mobile cards container */

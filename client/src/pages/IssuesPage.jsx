@@ -145,9 +145,14 @@ export const IssuesPage = () => {
     <div className="page-container" id="issues-page">
       <div className="page-header">
         <div className="page-header-info">
-          <h1 className="page-title">
-            Issues {selectedProjectObj ? `— ${selectedProjectObj.name}` : ''}
-          </h1>
+          <div className="issues-title-row">
+            <h1 className="page-title">
+              Issues {selectedProjectObj ? `— ${selectedProjectObj.name}` : ''}
+            </h1>
+            <span className="results-badge font-mono">
+              {total} {total === 1 ? 'issue' : 'issues'}
+            </span>
+          </div>
           <p className="page-description">
             Live technical issue tracker with server-side query filters, status workflow transitions, and audit logs.
           </p>
@@ -166,14 +171,35 @@ export const IssuesPage = () => {
       {/* Toolbar: Search, Filters Trigger, Sort Dropdown */}
       <div className="issues-toolbar">
         <form onSubmit={handleSearchSubmit} className="search-form">
-          <input
-            type="search"
-            className="search-input"
-            placeholder="Search issues by title or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            id="issue-search-input"
-          />
+          <div className="search-input-wrapper">
+            <span className="search-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
+            <input
+              type="search"
+              className="search-input"
+              placeholder="Search issues by title or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              id="issue-search-input"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="search-clear-btn"
+                onClick={() => {
+                  setSearchQuery('');
+                  setPage(1);
+                }}
+                title="Clear search query"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <Button type="submit" variant="secondary" size="sm" id="search-submit-btn">
             Search
           </Button>
@@ -225,6 +251,118 @@ export const IssuesPage = () => {
           isMobileDrawer={false}
         />
       </div>
+
+      {/* Active Filter Chips Bar (Quick Dismissal) */}
+      {hasActiveFilters && (
+        <div className="active-filters-bar" id="active-filters-bar">
+          <span className="active-filters-label">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            Active filters:
+          </span>
+
+          {filters.project && (
+            <span className="active-filter-pill">
+              Project: <strong>{selectedProjectObj?.name || 'Selected'}</strong>
+              <button
+                type="button"
+                className="pill-remove-btn"
+                onClick={() => handleFilterChange({ ...filters, project: '' })}
+                title="Remove project filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {filters.status && (
+            <span className="active-filter-pill">
+              Status: <strong>{filters.status}</strong>
+              <button
+                type="button"
+                className="pill-remove-btn"
+                onClick={() => handleFilterChange({ ...filters, status: '' })}
+                title="Remove status filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {filters.priority && (
+            <span className="active-filter-pill">
+              Priority: <strong>{filters.priority}</strong>
+              <button
+                type="button"
+                className="pill-remove-btn"
+                onClick={() => handleFilterChange({ ...filters, priority: '' })}
+                title="Remove priority filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {filters.severity && (
+            <span className="active-filter-pill">
+              Severity: <strong>{filters.severity}</strong>
+              <button
+                type="button"
+                className="pill-remove-btn"
+                onClick={() => handleFilterChange({ ...filters, severity: '' })}
+                title="Remove severity filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {filters.assignee && (
+            <span className="active-filter-pill">
+              Assignee:{' '}
+              <strong>
+                {filters.assignee === 'unassigned'
+                  ? 'Unassigned'
+                  : users.find((u) => u._id === filters.assignee)?.name || 'Selected'}
+              </strong>
+              <button
+                type="button"
+                className="pill-remove-btn"
+                onClick={() => handleFilterChange({ ...filters, assignee: '' })}
+                title="Remove assignee filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {searchQuery && (
+            <span className="active-filter-pill">
+              Query: <strong>"{searchQuery}"</strong>
+              <button
+                type="button"
+                className="pill-remove-btn"
+                onClick={() => {
+                  setSearchQuery('');
+                  setPage(1);
+                }}
+                title="Clear search query"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          <button
+            type="button"
+            className="clear-all-pills-btn"
+            onClick={handleResetFilters}
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
 
       {/* Mobile Filters Drawer */}
       <Drawer
@@ -283,13 +421,13 @@ export const IssuesPage = () => {
                 <SkeletonRow key={i} columns={8} />
               ))
             ) : issues.length === 0 ? (
-              <tr>
-                <td colSpan={8}>
+              <tr className="table-empty-row">
+                <td colSpan={8} className="table-empty-cell">
                   <EmptyState
-                    title="No issues match criteria"
+                    title={hasActiveFilters ? 'No matching issues found' : 'No issues in this project'}
                     description={
                       hasActiveFilters
-                        ? 'No issues match the applied filters or search keywords. Try adjusting or clearing your filters.'
+                        ? 'No issues match the applied filters or search keywords. Try clearing or adjusting your filters.'
                         : 'No issues exist in the selected project yet. Report the first issue to begin tracking.'
                     }
                     actionLabel={hasActiveFilters ? 'Clear all filters' : 'Create first issue'}
@@ -309,18 +447,16 @@ export const IssuesPage = () => {
       {/* Mobile Stacked Cards List View */}
       <div className="issues-mobile-cards-container">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))
+          Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : issues.length === 0 ? (
           <EmptyState
-            title="No issues found"
+            title={hasActiveFilters ? 'No matching issues found' : 'No issues in this project'}
             description={
               hasActiveFilters
-                ? 'No issues match your current filters.'
-                : 'No issues reported in this project yet.'
+                ? 'No issues match the applied filters or search keywords. Try clearing or adjusting your filters.'
+                : 'No issues exist in the selected project yet. Report the first issue to begin tracking.'
             }
-            actionLabel={hasActiveFilters ? 'Clear filters' : 'Create issue'}
+            actionLabel={hasActiveFilters ? 'Clear all filters' : 'Create first issue'}
             onAction={hasActiveFilters ? handleResetFilters : () => setIsFormOpen(true)}
           />
         ) : (
@@ -330,16 +466,17 @@ export const IssuesPage = () => {
         )}
       </div>
 
-      {/* Server Pagination */}
-      <Pagination
-        page={page}
-        limit={limit}
-        total={total}
-        totalPages={totalPages}
-        onPageChange={(newPage) => setPage(newPage)}
-      />
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={(p) => setPage(p)}
+          id="issues-pagination"
+        />
+      )}
 
-      {/* Create Issue Modal */}
+      {/* Issue Creation Modal */}
       <IssueForm
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}

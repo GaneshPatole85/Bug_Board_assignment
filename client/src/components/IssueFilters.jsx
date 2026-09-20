@@ -27,16 +27,23 @@ export const IssueFilters = ({
   };
 
   return (
-    <div className={`issue-filters-container ${isMobileDrawer ? 'mobile-drawer-view' : 'desktop-inline-view'}`} id="issue-filters">
+    <div
+      className={`issue-filters-container ${
+        isMobileDrawer ? 'mobile-drawer-view' : 'desktop-inline-view'
+      }`}
+      id="issue-filters"
+    >
       <div className="filter-item">
-        <label htmlFor="filter-project" className="filter-label">Project</label>
+        <label htmlFor="filter-project" className="filter-label">
+          Project
+        </label>
         <select
           id="filter-project"
-          className="filter-select"
+          className={`filter-select ${filters.project ? 'filter-active' : ''}`}
           value={filters.project || ''}
           onChange={(e) => handleSelect('project', e.target.value)}
         >
-          <option value="">All Projects</option>
+          <option value="">All projects</option>
           {projects.map((p) => (
             <option key={p._id} value={p._id}>
               {p.key} — {p.name}
@@ -46,62 +53,78 @@ export const IssueFilters = ({
       </div>
 
       <div className="filter-item">
-        <label htmlFor="filter-status" className="filter-label">Status</label>
+        <label htmlFor="filter-status" className="filter-label">
+          Status
+        </label>
         <select
           id="filter-status"
-          className="filter-select"
+          className={`filter-select ${filters.status ? 'filter-active' : ''}`}
           value={filters.status || ''}
           onChange={(e) => handleSelect('status', e.target.value)}
         >
-          <option value="">All Statuses</option>
+          <option value="">All statuses</option>
           {STATUS_OPTIONS.map((st) => (
-            <option key={st} value={st}>{st}</option>
+            <option key={st} value={st}>
+              {st}
+            </option>
           ))}
         </select>
       </div>
 
       <div className="filter-item">
-        <label htmlFor="filter-priority" className="filter-label">Priority</label>
+        <label htmlFor="filter-priority" className="filter-label">
+          Priority
+        </label>
         <select
           id="filter-priority"
-          className="filter-select"
+          className={`filter-select ${filters.priority ? 'filter-active' : ''}`}
           value={filters.priority || ''}
           onChange={(e) => handleSelect('priority', e.target.value)}
         >
-          <option value="">All Priorities</option>
+          <option value="">All priorities</option>
           {PRIORITY_OPTIONS.map((pr) => (
-            <option key={pr} value={pr}>{pr}</option>
+            <option key={pr} value={pr}>
+              {pr}
+            </option>
           ))}
         </select>
       </div>
 
       <div className="filter-item">
-        <label htmlFor="filter-severity" className="filter-label">Severity</label>
+        <label htmlFor="filter-severity" className="filter-label">
+          Severity
+        </label>
         <select
           id="filter-severity"
-          className="filter-select"
+          className={`filter-select ${filters.severity ? 'filter-active' : ''}`}
           value={filters.severity || ''}
           onChange={(e) => handleSelect('severity', e.target.value)}
         >
-          <option value="">All Severities</option>
+          <option value="">All severities</option>
           {SEVERITY_OPTIONS.map((sv) => (
-            <option key={sv} value={sv}>{sv}</option>
+            <option key={sv} value={sv}>
+              {sv}
+            </option>
           ))}
         </select>
       </div>
 
       <div className="filter-item">
-        <label htmlFor="filter-assignee" className="filter-label">Assignee</label>
+        <label htmlFor="filter-assignee" className="filter-label">
+          Assignee
+        </label>
         <select
           id="filter-assignee"
-          className="filter-select"
+          className={`filter-select ${filters.assignee ? 'filter-active' : ''}`}
           value={filters.assignee || ''}
           onChange={(e) => handleSelect('assignee', e.target.value)}
         >
-          <option value="">All Assignees</option>
+          <option value="">All assignees</option>
           <option value="unassigned">Unassigned</option>
           {users.map((u) => (
-            <option key={u._id} value={u._id}>{u.name}</option>
+            <option key={u._id} value={u._id}>
+              {u.name}
+            </option>
           ))}
         </select>
       </div>
