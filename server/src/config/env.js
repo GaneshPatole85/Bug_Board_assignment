@@ -18,8 +18,8 @@ export const env = {
   LOG_LEVEL: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'test' ? 'silent' : 'info'),
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100,
-  // Reserved for Phase 2
-  JWT_SECRET: process.env.JWT_SECRET || null,
+  // Phase 2 JWT Authentication
+  JWT_SECRET: process.env.JWT_SECRET || 'bugboard-dev-super-secret-jwt-key-min-32-chars',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1d',
   isProduction: process.env.NODE_ENV === 'production',
   isDevelopment: process.env.NODE_ENV === 'development' || !process.env.NODE_ENV,

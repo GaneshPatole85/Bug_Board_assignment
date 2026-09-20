@@ -52,6 +52,14 @@ apiClient.interceptors.response.use(
     };
 
     if (error.response) {
+      // Automatic session cleanup on 401 Unauthorized
+      if (error.response.status === 401) {
+        localStorage.removeItem('bugboard_token');
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.location.href = '/login';
+        }
+      }
+
       // Server responded with an error status (4xx, 5xx)
       const data = error.response.data;
       normalizedError.status = error.response.status;

@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import healthRoutes from './health.routes.js';
+import authRoutes from './auth.routes.js';
 
 const apiRouter = Router();
 
 // Mount sub-routers
 apiRouter.use('/health', healthRoutes);
+apiRouter.use('/auth', authRoutes);
 
 // Stubs for Phase 2/3 routers:
 // apiRouter.use('/auth', authRoutes);         // Phase 2

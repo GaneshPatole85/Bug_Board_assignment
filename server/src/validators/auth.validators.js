@@ -1,0 +1,58 @@
+import { body } from 'express-validator';
+
+/**
+ * Validation rules for user registration.
+ * Explicitly rejects role: 'Admin' (only Developer or Tester allowed for self-service registration).
+ */
+export const registerValidator = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters'),
+
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
+
+  body('role')
+    .notEmpty()
+    .withMessage('Role is required')
+    .custom((value) => {
+      if (value === 'Admin') {
+        throw new Error('Admin accounts cannot be self-registered. Permitted roles are Developer or Tester.');
+      }
+      if (!['Developer', 'Tester'].includes(value)) {
+        throw new Error('Role must be either Developer or Tester');
+      }
+      return true;
+    }),
+];
+
+/**
+ * Validation rules for user login.
+ */
+export const loginValidator = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required'),
+];

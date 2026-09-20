@@ -23,7 +23,7 @@ erDiagram
         ObjectId _id PK
         string name "min:2, max:50"
         string email UK "lowercase, validated"
-        string passwordHash "select:false"
+        string passwordHash "bcrypt cost 12, select:false, stripped in toJSON"
         string role "Admin | Developer | Tester"
         date createdAt
         date updatedAt
@@ -136,10 +136,14 @@ Per project guidelines, speculative indexing is strictly avoided. Indexes are cr
 {
   name: { type: String, required: true, trim: true, minlength: 2, maxlength: 50 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, match: /^\S+@\S+\.\S+$/ },
-  passwordHash: { type: String, required: true, select: false },
+  passwordHash: { type: String, required: true, select: false }, // Hashed with bcrypt cost 12 on pre-save
   role: { type: String, required: true, enum: ['Admin', 'Developer', 'Tester'], default: 'Developer' },
-  timestamps: true
+  timestamps: true,
+  // Serialization security transforms:
+  toJSON: { transform: (doc, ret) => { delete ret.passwordHash; delete ret.__v; return ret; } },
+  toObject: { transform: (doc, ret) => { delete ret.passwordHash; delete ret.__v; return ret; } }
 }
+// Methods: user.comparePassword(candidatePassword) -> Promise<boolean>
 ```
 
 ### 5.2 Project Collection (`projects`)

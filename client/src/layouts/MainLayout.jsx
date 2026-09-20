@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import './MainLayout.css';
 
 export const MainLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [backendHealth, setBackendHealth] = useState({ status: 'checking', message: 'Connecting...' });
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -45,6 +48,24 @@ export const MainLayout = () => {
     };
   }, []);
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const getRoleBadgeClass = (role) => {
+    switch (role) {
+      case 'Admin':
+        return 'badge-warning';
+      case 'Developer':
+        return 'badge-info';
+      case 'Tester':
+        return 'badge-success';
+      default:
+        return 'badge-info';
+    }
+  };
+
   return (
     <div className="layout-container" id="bugboard-root">
       {/* Top Header */}
@@ -65,7 +86,7 @@ export const MainLayout = () => {
               </svg>
             </div>
             <span className="brand-name">BugBoard</span>
-            <span className="brand-badge">Phase 1</span>
+            <span className="brand-badge">Phase 2 • Auth & RBAC</span>
           </div>
         </div>
 
@@ -94,6 +115,55 @@ export const MainLayout = () => {
             />
             <span>{backendHealth.message}</span>
           </div>
+
+          {/* User Session Bar */}
+          {isAuthenticated && user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }} id="user-header-profile">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {user.name}
+                </span>
+                <span className={`badge ${getRoleBadgeClass(user.role)}`} style={{ fontSize: '0.65rem' }}>
+                  {user.role}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                id="logout-btn"
+                style={{
+                  backgroundColor: 'var(--bg-tertiary)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '0.4rem 0.75rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)',
+                }}
+                title="Sign out of current session"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <NavLink
+                to="/login"
+                style={{
+                  backgroundColor: 'var(--accent-primary)',
+                  color: '#ffffff',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                }}
+                id="header-login-btn"
+              >
+                Sign In
+              </NavLink>
+            </div>
+          )}
         </div>
       </header>
 
@@ -150,28 +220,70 @@ export const MainLayout = () => {
             </NavLink>
           </div>
 
+          {/* Account Section */}
           <div className="nav-section">
-            <span className="nav-heading">Account & Access</span>
-            <NavLink
-              to="/login"
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              id="nav-login"
-            >
-              <span className="nav-icon">
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                </svg>
-              </span>
-              <span>Sign In / Auth</span>
-            </NavLink>
+            <span className="nav-heading">Authentication</span>
+            {!isAuthenticated ? (
+              <>
+                <NavLink
+                  to="/login"
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                  id="nav-login"
+                >
+                  <span className="nav-icon">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                    </svg>
+                  </span>
+                  <span>Sign In</span>
+                </NavLink>
+
+                <NavLink
+                  to="/register"
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                  id="nav-register"
+                >
+                  <span className="nav-icon">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                  </span>
+                  <span>Register</span>
+                </NavLink>
+              </>
+            ) : (
+              <div
+                style={{
+                  padding: '0.75rem',
+                  backgroundColor: 'var(--bg-tertiary)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {user.name}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  {user.email}
+                </div>
+                {/* 
+                  NOTE: Role indicator in UI is for UX awareness only.
+                  The backend Express middleware chains (authenticate, authorizeRole)
+                  strictly enforce all authorization boundaries.
+                */}
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  Role: <strong style={{ color: 'var(--accent-primary)' }}>{user.role}</strong>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="sidebar-footer">
             <div className="tech-info-card">
               <strong>BugBoard Architecture</strong>
-              Phase 1 • Foundation & Schema
+              Phase 2 • Auth & RBAC Active
               <br />
-              MERN Stack • Native Mongo
+              JWT Stateless • Native Mongo
             </div>
           </div>
         </aside>

@@ -88,13 +88,31 @@ cp server/.env.example server/.env
 cp client/.env.example client/.env
 ```
 
-### 3. Run Automated Tests
-Verify all Mongoose schemas, constraints, enums, and foundational middleware:
+### 3. Seed Sample Accounts (Phase 2 Demo Credentials)
+Populate the database with test accounts for each role (`Admin`, `Developer`, `Tester`):
 ```bash
-npm run test:server
+npm run seed --prefix server
 ```
 
-### 4. Start Development Servers
+#### Sample Login Accounts for Reviewers
+
+| Role | Email | Password | Permissions |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `admin@bugboard.test` | `Password123!` | Full system rights, project creation/updates, universal project access |
+| **Developer** | `dev@bugboard.test` | `Password123!` | Issue assignment, status workflow transitions, comments |
+| **Tester** | `tester@bugboard.test` | `Password123!` | Bug reporting, QA verification, status workflow transitions |
+
+### 4. Run Automated Tests
+Verify all foundation tests and the Jest authentication test suite:
+```bash
+# Foundation & Schema tests
+npm run test:server
+
+# Phase 2 Auth & RBAC isolated in-memory test suite
+npm run test:auth --prefix server
+```
+
+### 5. Start Development Servers
 You can run both backend and frontend concurrently:
 ```bash
 npm run dev
@@ -169,10 +187,10 @@ Speculative compound indexing is strictly avoided. Indexes are created **only** 
 
 ## Phase Roadmap
 
-- [x] **Phase 1: Foundation & Database Design** *(Current)*
+- [x] **Phase 1: Foundation & Database Design**
   - Monorepo structure, Mongoose schemas, Pino logging, health checks, error handling, React Router & responsive layout.
-- [ ] **Phase 2: Authentication & Role-Based Access Control (RBAC)**
-  - Registration/Login, bcrypt hashing, JWT issuance & verification, Admin/Dev/Tester role authorization middleware.
+- [x] **Phase 2: Authentication & Role-Based Access Control (RBAC)** *(Current)*
+  - Registration/Login, bcrypt hashing, JWT issuance & verification, Admin/Dev/Tester role authorization middleware, rate limiting, seed credentials.
 - [ ] **Phase 3: Project & Issue Management**
   - Project CRUD with membership check, Issue lifecycle state machine, server-side filtering & pagination.
 - [ ] **Phase 4: Comments, Activity Audit & Dashboard**
