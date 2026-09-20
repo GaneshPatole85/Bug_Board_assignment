@@ -12,7 +12,10 @@
     "test": "node --test tests/foundation.test.js tests/api.test.js",
     "test:auth": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/auth.test.js",
     "test:phase3": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/project.test.js tests/issue.test.js",
-    "test:all": "npm run test && npm run test:auth && npm run test:phase3",
+    "test:phase4": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/phase4.test.js",
+    "test:bonus": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/bonus.test.js",
+    "test:hunt": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/deep-hunt.test.js",
+    "test:all": "npm run test && npm run test:auth && npm run test:phase3 && npm run test:phase4 && npm run test:bonus && npm run test:hunt",
     "seed": "node src/utils/seed.js"
   },
   "dependencies": {
@@ -25,6 +28,8 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.9.5",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.10",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0"
   },

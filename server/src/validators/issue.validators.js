@@ -23,6 +23,8 @@ const ALLOWED_SORT_FIELDS = [
  */
 export const createIssueValidator = [
   body('title')
+    .isString()
+    .withMessage('Issue title must be a string')
     .trim()
     .notEmpty()
     .withMessage('Issue title is required')
@@ -30,6 +32,8 @@ export const createIssueValidator = [
     .withMessage('Issue title must be between 3 and 200 characters'),
 
   body('description')
+    .isString()
+    .withMessage('Issue description must be a string')
     .trim()
     .notEmpty()
     .withMessage('Issue description is required')
@@ -76,6 +80,8 @@ export const updateIssueValidator = [
 
   body('title')
     .optional()
+    .isString()
+    .withMessage('Issue title must be a string')
     .trim()
     .notEmpty()
     .withMessage('Issue title cannot be empty')
@@ -84,6 +90,8 @@ export const updateIssueValidator = [
 
   body('description')
     .optional()
+    .isString()
+    .withMessage('Issue description must be a string')
     .trim()
     .notEmpty()
     .withMessage('Issue description cannot be empty')
@@ -103,9 +111,7 @@ export const updateIssueValidator = [
   body('status')
     .custom((value) => {
       if (value !== undefined) {
-        throw new Error(
-          'Status cannot be modified via general PATCH. Use PATCH /api/v1/issues/:issueId/status instead.'
-        );
+        throw new Error('Status cannot be modified via this endpoint. Use PATCH /issues/:issueId/status');
       }
       return true;
     }),
@@ -113,9 +119,7 @@ export const updateIssueValidator = [
   body('assignee')
     .custom((value) => {
       if (value !== undefined) {
-        throw new Error(
-          'Assignee cannot be modified via general PATCH. Use PATCH /api/v1/issues/:issueId/assignee instead.'
-        );
+        throw new Error('Assignee cannot be modified via this endpoint. Use PATCH /issues/:issueId/assignee');
       }
       return true;
     }),
@@ -145,8 +149,11 @@ export const updateAssigneeValidator = [
     .withMessage('Invalid issue ID format'),
 
   body('assignee')
-    .custom((value) => {
-      if (value === null || value === '' || value === undefined) {
+    .custom((value, { req }) => {
+      if (!req.body || !('assignee' in req.body)) {
+        throw new Error('Assignee field is required (specify user ID or null to unassign)');
+      }
+      if (value === null || value === '') {
         return true;
       }
       if (!mongoose.Types.ObjectId.isValid(value)) {

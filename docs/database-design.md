@@ -206,3 +206,12 @@ Per project guidelines, speculative indexing is strictly avoided. Indexes are cr
 ## 6. Timestamp Strategy
 - Every mutable business entity (`User`, `Project`, `Issue`, `Comment`) uses `{ timestamps: true }`, providing standardized `createdAt` and `updatedAt` ISO-8601 UTC timestamps automatically managed by Mongoose.
 - The `Activity` collection represents an immutable event stream; it uses `{ timestamps: false }` with an explicit, immutable `createdAt: { type: Date, default: Date.now, immutable: true }` property.
+
+---
+
+## 7. Phase 4 Schema Evolution Note
+- **No Schema Changes Required**: The `Comment` and `Activity` schemas established in Phase 1 already fully satisfied all Phase 4 functional requirements:
+  - `Comment` models immutable discussion threads indexed on `issue` with author reference and content length validation (1–2000 chars).
+  - `Activity` models granular audit records with `actor`, `action`, `field`, `oldValue`, and `newValue`. In Phase 4, activity tracking was activated for `title`, `priority`, and `severity`, while explicitly excluding noisy `description` changes.
+  - Compound indexes on `Issue` (`{ project: 1, status: 1 }` and `{ assignee: 1 }`) efficiently power the single-roundtrip `$facet` aggregation pipeline in `GET /api/v1/dashboard/summary`.
+

@@ -2,7 +2,7 @@ import { userService } from '../services/user.service.js';
 
 export const listUsers = async (req, res, next) => {
   try {
-    const users = await userService.listUsers();
+    const users = await userService.listUsers(req.user);
     res.status(200).json({
       success: true,
       data: users,

@@ -165,7 +165,96 @@ Reassigns or unassigns an issue. Validates assignee project membership. Creates 
   - `200 OK` Assignee updated
   - `422 Unprocessable Entity` Assignee not a project member
 
-### `GET /issues/:issueId/activities`
+### `GET /issues/:issueId/activities` (or `GET /issues/:issueId/activity`)
 Retrieves the audit activity trail for an issue.
 - **Auth**: Bearer JWT (requires project access)
 - **Response**: `200 OK` array of activities sorted by `createdAt: -1` with populated actor.
+
+---
+
+## 6. Comments
+### `POST /issues/:issueId/comments`
+Adds an immutable discussion comment to an issue. The author is strictly populated from the authenticated user token (anti-spoofing).
+- **Auth**: Bearer JWT (requires project membership or Admin)
+- **Body**: `{ "content": "Root cause identified in token expiration handler." }`
+- **Validation**: `content` required, 1–2000 characters.
+- **Responses**:
+  - `201 Created` with created comment and populated `author`
+  - `403 Forbidden` if user is not a member of the project
+  - `422 Unprocessable Entity` if content is missing or exceeds 2000 characters
+
+### `GET /issues/:issueId/comments`
+Retrieves comments for an issue in chronological order (oldest-first, `createdAt: 1`) with pagination.
+- **Auth**: Bearer JWT (requires project membership or Admin)
+- **Query Parameters**:
+  - `page`: Integer >= 1 (default 1)
+  - `limit`: Integer 1–100 (default 20)
+- **Response**: `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "6aaf7f1dce6eab64e7cc44ee",
+      "issue": "6aaf7f1dce6eab64e7cc44aa",
+      "author": {
+        "_id": "6aaf7f1dce6eab64e7cc44cb",
+        "name": "Priya Dev",
+        "email": "priya@bugboard.test",
+        "role": "Developer"
+      },
+      "content": "Root cause identified in token expiration handler.",
+      "createdAt": "2026-09-20T17:15:00.000Z",
+      "updatedAt": "2026-09-20T17:15:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1,
+  "totalPages": 1
+}
+```
+
+---
+
+## 7. Dashboard Analytics
+### `GET /dashboard/summary`
+Phase 4 aggregate analytics computed via a single database-side MongoDB `$facet` aggregation pipeline.
+- **Auth**: Bearer JWT
+- **Scoping**: Universal system-wide for Admins; scoped strictly to member projects for Developers and Testers.
+- **Response**: `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "totals": {
+      "total": 24,
+      "open": 8,
+      "inProgress": 5,
+      "critical": 3,
+      "resolved": 6
+    },
+    "assignedToMe": [
+      {
+        "_id": "6aaf7f1dce6eab64e7cc44aa",
+        "title": "Database connection pool leakage",
+        "status": "In Progress",
+        "priority": "Urgent",
+        "severity": "Critical",
+        "createdAt": "2026-09-20T10:00:00.000Z",
+        "project": {
+          "_id": "6aaf7f1dce6eab64e7cc4499",
+          "key": "BBC",
+          "name": "BugBoard Core"
+        }
+      }
+    ]
+  }
+}
+```
+
+### `GET /dashboard`
+Provides rich live engineering console metrics including status breakdown, severity breakdown, priority breakdown, and recent activity trail.
+- **Auth**: Bearer JWT (scoped to accessible projects)
+- **Response**: `200 OK`
+

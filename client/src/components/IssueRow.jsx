@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import { StatusBadge, PriorityBadge, SeverityBadge, KeyBadge } from './ui/Badge.jsx';
 import './IssueRow.css';
 
@@ -10,8 +11,15 @@ const getInitials = (name) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export const IssueRow = ({ issue }) => {
+export const IssueRow = ({ issue, onDelete }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const currentUserId = user?._id || user?.id;
+  const reporterId = issue.reporter?._id || (typeof issue.reporter === 'string' ? issue.reporter : null);
+  const canDelete =
+    user?.role === 'Admin' ||
+    (reporterId && currentUserId && reporterId.toString() === currentUserId.toString());
 
   const handleRowClick = () => {
     navigate(`/issues/${issue._id}`);
@@ -72,6 +80,24 @@ export const IssueRow = ({ issue }) => {
           day: 'numeric',
         })}
       </td>
+      {onDelete && (
+        <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+          {canDelete && (
+            <button
+              type="button"
+              className="issue-row-delete-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(issue);
+              }}
+              title="Delete issue"
+              aria-label={`Delete issue ${issueKey}`}
+            >
+              🗑️
+            </button>
+          )}
+        </td>
+      )}
     </tr>
   );
 };

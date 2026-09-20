@@ -49,3 +49,16 @@ export const updateProject = async (req, res, next) => {
     next(error);
   }
 };
+
+export const deleteProject = async (req, res, next) => {
+  try {
+    const result = await projectService.deleteProject(req.params.projectId, req.user);
+    res.status(200).json({
+      success: true,
+      message: 'Project and all associated issues deleted successfully',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

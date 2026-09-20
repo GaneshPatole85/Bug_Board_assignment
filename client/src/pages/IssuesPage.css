@@ -19,6 +19,26 @@
   color: var(--color-slate);
 }
 
+.project-team-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background-color: rgba(14, 124, 123, 0.1);
+  border: 1px solid rgba(14, 124, 123, 0.25);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.project-team-badge:hover {
+  background-color: rgba(14, 124, 123, 0.2);
+  border-color: var(--color-accent);
+}
+
 .issues-toolbar {
   display: flex;
   align-items: center;
@@ -70,6 +90,15 @@
   outline-offset: 0;
 }
 
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
 .search-clear-btn {
   position: absolute;
   right: 8px;
@@ -94,6 +123,40 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.view-switcher-control {
+  display: flex;
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: var(--color-slate);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.view-toggle-btn:hover {
+  color: var(--color-ink);
+}
+
+.view-toggle-btn.active {
+  background-color: var(--color-surface);
+  color: var(--color-accent);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .mobile-filter-trigger-btn {

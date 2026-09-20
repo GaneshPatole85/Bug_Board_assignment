@@ -36,6 +36,34 @@
   gap: 8px;
 }
 
+.issue-header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.issue-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #d64545;
+  background: rgba(214, 69, 69, 0.08);
+  border: 1px solid rgba(214, 69, 69, 0.25);
+  border-radius: var(--radius-xs);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.issue-delete-btn:hover {
+  background: rgba(214, 69, 69, 0.18);
+  border-color: #d64545;
+  color: #b0234b;
+}
+
 .issue-key-row {
   display: flex;
   align-items: center;

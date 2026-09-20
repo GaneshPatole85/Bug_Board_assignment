@@ -17,7 +17,7 @@ const projectSchema = new mongoose.Schema(
       trim: true,
       minlength: [2, 'Project key must be at least 2 characters'],
       maxlength: [10, 'Project key cannot exceed 10 characters'],
-      match: [/^[A-Z0-9]+$/, 'Project key must contain only uppercase alphanumeric characters (e.g. BUG, PROJ1)'],
+      match: [/^[A-Z0-9-]+$/, 'Project key must contain only uppercase alphanumeric characters and hyphens (e.g. BUG, BRTINF-20)'],
     },
     description: {
       type: String,

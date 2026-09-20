@@ -86,6 +86,28 @@
   text-align: right;
 }
 
+.col-actions {
+  width: 50px;
+  text-align: center;
+}
+
+.issue-row-delete-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 0.85rem;
+  opacity: 0.6;
+  transition: all var(--transition-fast);
+}
+
+.issue-row-delete-btn:hover {
+  opacity: 1;
+  background: rgba(214, 69, 69, 0.12);
+  border-color: rgba(214, 69, 69, 0.3);
+}
+
 /* Tablet column pruning per B3 requirement */
 @media (max-width: 1024px) {
   .col-tablet-hide {

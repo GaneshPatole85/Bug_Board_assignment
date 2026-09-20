@@ -1,9 +1,11 @@
 import { Issue } from '../models/Issue.js';
 import { Project } from '../models/Project.js';
 import { User } from '../models/User.js';
+import { Comment } from '../models/Comment.js';
 import { Activity } from '../models/Activity.js';
 import { ROLES } from '../constants/roles.js';
 import { workflowService } from './workflow.service.js';
+import { notificationService } from './notification.service.js';
 
 const POPULATE_ISSUE = [
   {
@@ -98,16 +100,7 @@ class IssueService {
       const userProjects = await Project.find({ members: user.id }).select('_id');
       const userProjectIds = userProjects.map((p) => p._id);
 
-      if (userProjectIds.length === 0) {
-        return {
-          data: [],
-          page: 1,
-          limit: Math.min(parseInt(queryParams.limit, 10) || 20, 100),
-          total: 0,
-          totalPages: 0,
-        };
-      }
-
+      // Check specific project access FIRST to prevent IDOR leaks for 0-project users
       if (queryParams.project) {
         const hasAccess = userProjectIds.some(
           (id) => id.toString() === queryParams.project.toString()
@@ -119,6 +112,15 @@ class IssueService {
         }
         filter.project = queryParams.project;
       } else {
+        if (userProjectIds.length === 0) {
+          return {
+            data: [],
+            page: 1,
+            limit: Math.min(parseInt(queryParams.limit, 10) || 20, 100),
+            total: 0,
+            totalPages: 0,
+          };
+        }
         filter.project = { $in: userProjectIds };
       }
     }
@@ -192,7 +194,13 @@ class IssueService {
 
     // Verify project authorization
     if (user.role !== ROLES.ADMIN) {
-      const isMember = issue.project.members.some(
+      if (!issue.project) {
+        const error = new Error('Project associated with this issue is unavailable or has been deleted');
+        error.statusCode = 404;
+        throw error;
+      }
+      const members = Array.isArray(issue.project.members) ? issue.project.members : [];
+      const isMember = members.some(
         (m) => (m._id || m).toString() === user.id.toString()
       );
       if (!isMember) {
@@ -207,24 +215,56 @@ class IssueService {
 
   /**
    * General issue patch (title, description, priority, severity).
+   * Generates Activity audit log records for any mutated fields.
    */
   async updateIssue(issueId, updateData, user) {
     const issue = await this.getIssueById(issueId, user);
+    const changes = [];
+    let hasChanges = false;
 
-    if (updateData.title !== undefined) {
+    if (updateData.title !== undefined && updateData.title.trim() !== issue.title) {
+      changes.push({ field: 'title', oldValue: issue.title, newValue: updateData.title.trim() });
       issue.title = updateData.title.trim();
+      hasChanges = true;
     }
-    if (updateData.description !== undefined) {
+    if (updateData.description !== undefined && updateData.description.trim() !== issue.description) {
+      // Deliberate design decision: description changes are NOT logged in Activity
+      // timeline to avoid noisy, low-value diffing of long free-text bodies.
       issue.description = updateData.description.trim();
+      hasChanges = true;
     }
-    if (updateData.priority !== undefined) {
+    if (updateData.priority !== undefined && updateData.priority !== issue.priority) {
+      changes.push({ field: 'priority', oldValue: issue.priority, newValue: updateData.priority });
       issue.priority = updateData.priority;
+      hasChanges = true;
     }
-    if (updateData.severity !== undefined) {
+    if (updateData.severity !== undefined && updateData.severity !== issue.severity) {
+      changes.push({ field: 'severity', oldValue: issue.severity, newValue: updateData.severity });
       issue.severity = updateData.severity;
+      hasChanges = true;
     }
 
-    await issue.save();
+    if (hasChanges) {
+      await issue.save();
+    }
+
+    if (changes.length > 0) {
+
+      // Record Activity audit logs for each changed field
+      await Promise.all(
+        changes.map((ch) =>
+          Activity.create({
+            issue: issue._id,
+            actor: user.id,
+            action: 'ISSUE_UPDATED',
+            field: ch.field,
+            oldValue: String(ch.oldValue),
+            newValue: String(ch.newValue),
+            createdAt: new Date(),
+          })
+        )
+      );
+    }
 
     return Issue.findById(issue._id).populate(POPULATE_ISSUE);
   }
@@ -262,6 +302,14 @@ class IssueService {
       oldValue: previousStatus,
       newValue: newStatus,
       createdAt: new Date(),
+    });
+
+    // Fire-and-forget notification dispatch
+    notificationService.notifyStatusChange({
+      issue,
+      oldStatus: previousStatus,
+      newStatus,
+      actor: user,
     });
 
     return Issue.findById(issue._id).populate(POPULATE_ISSUE);
@@ -314,6 +362,15 @@ class IssueService {
       createdAt: new Date(),
     });
 
+    // Fire-and-forget notification dispatch
+    if (targetAssignee) {
+      notificationService.notifyAssignment({
+        issue,
+        newAssigneeId: targetAssignee,
+        actor: user,
+      });
+    }
+
     return Issue.findById(issue._id).populate(POPULATE_ISSUE);
   }
 
@@ -327,6 +384,35 @@ class IssueService {
     return Activity.find({ issue: issueId })
       .sort({ createdAt: -1 })
       .populate('actor', 'name email role');
+  }
+
+  /**
+   * Delete an issue and cascade delete all its comments and activities.
+   * Authorization: Admin or the issue Reporter can delete an issue.
+   */
+  async deleteIssue(issueId, user) {
+    const issue = await this.getIssueById(issueId, user);
+
+    const isAdmin = user.role === ROLES.ADMIN;
+    const isReporter =
+      issue.reporter &&
+      (issue.reporter._id ? issue.reporter._id.toString() : issue.reporter.toString()) === user.id.toString();
+
+    if (!isAdmin && !isReporter) {
+      const error = new Error('Forbidden: Only an Admin or the issue Reporter can delete this issue');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    // Cascade delete comments and activities
+    await Comment.deleteMany({ issue: issueId });
+    await Activity.deleteMany({ issue: issueId });
+
+    await Issue.findByIdAndDelete(issueId);
+
+    return {
+      deletedIssueId: issueId,
+    };
   }
 }
 

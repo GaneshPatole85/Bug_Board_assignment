@@ -1,34 +1,185 @@
-.comment-list-container {
-  margin-top: 14px;
+.comment-thread-section {
+  display: flex;
+  flex-direction: column;
 }
 
-.comment-placeholder-box {
+.comment-thread-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.comment-thread-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.comment-count-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  color: var(--color-slate);
+}
+
+.comment-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   padding: 24px 16px;
-  background-color: var(--color-surface);
+  background-color: var(--color-canvas);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
+  margin-bottom: 12px;
 }
 
-.comment-icon {
+.comment-empty-icon {
   color: var(--color-slate);
   margin-bottom: 8px;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
-.comment-placeholder-title {
-  font-size: 0.95rem;
+.comment-empty-text {
+  font-size: 0.85rem;
+  color: var(--color-slate);
+  margin: 0;
+}
+
+.comment-loading-state {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0;
+}
+
+.comment-skeleton-line {
+  height: 14px;
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-canvas) 50%, var(--color-border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.comment-skeleton-line.short {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.comment-error-banner {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background-color: rgba(214, 69, 69, 0.08);
+  border: 1px solid var(--color-danger, #D64545);
+  color: var(--color-danger, #D64545);
+  font-size: 0.825rem;
+  margin-bottom: 14px;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.comment-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast);
+}
+
+.comment-card:hover {
+  border-color: rgba(14, 124, 123, 0.4);
+}
+
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.comment-body-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-meta-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.comment-author-name {
+  font-size: 0.825rem;
   font-weight: 600;
   color: var(--color-ink);
-  margin-bottom: 4px;
 }
 
-.comment-placeholder-desc {
-  font-size: 0.825rem;
+.comment-role-tag {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.comment-role-tag.role-admin {
+  background-color: rgba(176, 35, 75, 0.12);
+  color: #B0234B;
+  border: 1px solid rgba(176, 35, 75, 0.25);
+}
+
+.comment-role-tag.role-developer {
+  background-color: rgba(43, 108, 176, 0.12);
+  color: #2B6CB0;
+  border: 1px solid rgba(43, 108, 176, 0.25);
+}
+
+.comment-role-tag.role-tester {
+  background-color: rgba(124, 92, 191, 0.12);
+  color: #7C5CBF;
+  border: 1px solid rgba(124, 92, 191, 0.25);
+}
+
+.comment-timestamp {
+  font-size: 0.75rem;
   color: var(--color-slate);
-  max-width: 380px;
-  line-height: 1.4;
+  margin-left: auto;
+}
+
+.comment-text-content {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
 }

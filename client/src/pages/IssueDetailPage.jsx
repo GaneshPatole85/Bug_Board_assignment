@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { EmptyState } from '../components/ui/EmptyState.jsx';
 import ActivityTimeline from '../components/ActivityTimeline.jsx';
 import CommentList from '../components/CommentList.jsx';
+import AttachmentSection from '../components/AttachmentSection.jsx';
 import './IssueDetailPage.css';
 
 /**
@@ -224,9 +225,11 @@ export const IssueDetailPage = () => {
         {/* Left Primary Content: Title, Description, Activities, Comments */}
         <div className="issue-main-content">
           <div className="issue-header-block console-card">
-            <div className="issue-key-row">
-              <KeyBadge>{issueKey}</KeyBadge>
-              <span className="project-breadcrumb">{issue.project?.name}</span>
+            <div className="issue-header-top-row">
+              <div className="issue-key-row">
+                <KeyBadge>{issueKey}</KeyBadge>
+                <span className="project-breadcrumb">{issue.project?.name}</span>
+              </div>
             </div>
             <h1 className="issue-detail-title" id="issue-detail-title">
               {issue.title}
@@ -244,7 +247,7 @@ export const IssueDetailPage = () => {
           {/* Discussion / Comments Section */}
           <div className="issue-section-card console-card">
             <h3 className="section-heading">Discussion</h3>
-            <CommentList />
+            <CommentList issueId={issueId} />
           </div>
 
           {/* Activity Timeline */}
@@ -384,8 +387,12 @@ export const IssueDetailPage = () => {
               </span>
             </div>
           </div>
+
+          {/* Screenshot & File Attachments */}
+          <AttachmentSection issueId={issueId} />
         </aside>
       </div>
+
     </div>
   );
 };

@@ -17,8 +17,14 @@ export const createProjectValidator = [
     .notEmpty()
     .withMessage('Project key is required')
     .toUpperCase()
-    .matches(/^[A-Z0-9]{2,10}$/)
-    .withMessage('Project key must be between 2 and 10 uppercase alphanumeric characters (e.g. BUG, PROJ1)'),
+    .matches(/^[A-Z0-9-]{2,10}$/)
+    .withMessage('Project key must be between 2 and 10 uppercase alphanumeric characters or hyphens (e.g. BUG, BRTINF-20)')
+    .custom((val) => {
+      if (!/[A-Z0-9]/.test(val)) {
+        throw new Error('Project key must contain at least one letter or number');
+      }
+      return true;
+    }),
 
   body('description')
     .optional({ checkFalsy: false })
@@ -64,8 +70,8 @@ export const updateProjectValidator = [
 
   body('members')
     .optional()
-    .isArray()
-    .withMessage('Members must be an array of user IDs')
+    .isArray({ min: 1 })
+    .withMessage('Members must be a non-empty array of user IDs')
     .custom((members) => {
       for (const memberId of members) {
         if (!mongoose.Types.ObjectId.isValid(memberId)) {

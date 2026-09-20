@@ -466,4 +466,77 @@ describe('Issue API Endpoints & Workflow Engine (Phase 3)', () => {
       });
     });
   });
+
+  describe('DELETE /api/v1/issues/:issueId', () => {
+    test('1. Admin can delete an issue', async () => {
+      const issue = await Issue.create({
+        title: 'Issue to Delete by Admin',
+        description: 'Test desc',
+        project: project._id,
+        reporter: devUser._id,
+        status: ISSUE_STATUS.OPEN,
+        priority: ISSUE_PRIORITY.MEDIUM,
+        severity: ISSUE_SEVERITY.MEDIUM,
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/issues/${issue._id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const found = await Issue.findById(issue._id);
+      expect(found).toBeNull();
+    });
+
+    test('2. Reporter can delete their own issue', async () => {
+      const issue = await Issue.create({
+        title: 'Issue to Delete by Reporter',
+        description: 'Test desc',
+        project: project._id,
+        reporter: devUser._id,
+        status: ISSUE_STATUS.OPEN,
+        priority: ISSUE_PRIORITY.LOW,
+        severity: ISSUE_SEVERITY.LOW,
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/issues/${issue._id}`)
+        .set('Authorization', `Bearer ${devToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const found = await Issue.findById(issue._id);
+      expect(found).toBeNull();
+    });
+
+    test('3. Non-reporter Developer cannot delete another user issue -> 403', async () => {
+      const issue = await Issue.create({
+        title: 'Protected Issue',
+        description: 'Test desc',
+        project: project._id,
+        reporter: adminUser._id, // Reporter is admin
+        status: ISSUE_STATUS.OPEN,
+        priority: ISSUE_PRIORITY.HIGH,
+        severity: ISSUE_SEVERITY.HIGH,
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/issues/${issue._id}`)
+        .set('Authorization', `Bearer ${devToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    test('4. Non-existent issue returns 404', async () => {
+      const fakeId = new mongoose.Types.ObjectId().toString();
+      const res = await request(app)
+        .delete(`/api/v1/issues/${fakeId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(404);
+    });
+  });
 });

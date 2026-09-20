@@ -48,6 +48,7 @@ apiClient.interceptors.response.use(
       success: false,
       message: 'Network or server error',
       errors: [],
+      fieldErrors: {}, // Map of { fieldName: errorMessage } for inline display
       status: 500,
     };
 
@@ -63,12 +64,29 @@ apiClient.interceptors.response.use(
       // Server responded with an error status (4xx, 5xx)
       const data = error.response.data;
       normalizedError.status = error.response.status;
-      normalizedError.message = data?.message || `Request failed with status ${error.response.status}`;
-      normalizedError.errors = Array.isArray(data?.errors)
+
+      // Build fieldErrors map from the express-validator errors array
+      const rawErrors = Array.isArray(data?.errors)
         ? data.errors
         : data?.errors
         ? [data.errors]
         : [];
+      normalizedError.errors = rawErrors;
+
+      if (rawErrors.length > 0) {
+        // Build { field: message } map for inline form display
+        const fieldMap = {};
+        rawErrors.forEach((e) => {
+          if (e.field && !fieldMap[e.field]) {
+            fieldMap[e.field] = e.message;
+          }
+        });
+        normalizedError.fieldErrors = fieldMap;
+        // Create a human-readable joined message from all field errors
+        normalizedError.message = rawErrors.map((e) => e.message).join(' · ');
+      } else {
+        normalizedError.message = data?.message || `Request failed with status ${error.response.status}`;
+      }
     } else if (error.request) {
       // Request was made but no response received (e.g. server down)
       normalizedError.status = 0;

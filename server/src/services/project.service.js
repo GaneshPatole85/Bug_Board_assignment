@@ -1,6 +1,8 @@
 import { Project } from '../models/Project.js';
 import { User } from '../models/User.js';
 import { Issue } from '../models/Issue.js';
+import { Comment } from '../models/Comment.js';
+import { Activity } from '../models/Activity.js';
 import { ROLES } from '../constants/roles.js';
 
 class ProjectService {
@@ -130,14 +132,55 @@ class ProjectService {
       project.description = updateData.description.trim();
     }
     if (updateData.members) {
-      // Validate all provided member IDs exist
-      const memberIds = Array.from(new Set(updateData.members.map((id) => id.toString())));
+      if (updateData.members.length === 0) {
+        const error = new Error('Project must have at least one member.');
+        error.statusCode = 422;
+        throw error;
+      }
+
+      // Ensure updating Admin remains in members list to prevent accidental lockout
+      const memberSet = new Set(updateData.members.map((id) => id.toString()));
+      if (user && user.id) {
+        memberSet.add(user.id.toString());
+      }
+      const memberIds = Array.from(memberSet);
+
+      // Validate all provided member IDs exist in DB
       const existingUsers = await User.find({ _id: { $in: memberIds } }).select('_id');
       if (existingUsers.length !== memberIds.length) {
         const error = new Error('One or more specified member user IDs do not exist.');
         error.statusCode = 422;
         throw error;
       }
+
+      // Referential integrity: clean up dangling assignees for removed members
+      const danglingIssues = await Issue.find({
+        project: project._id,
+        assignee: { $nin: memberIds, $ne: null },
+      });
+
+      if (danglingIssues.length > 0) {
+        await Issue.updateMany(
+          { project: project._id, assignee: { $nin: memberIds } },
+          { $set: { assignee: null } }
+        );
+
+        // Record audit activity for each unassigned issue
+        await Promise.all(
+          danglingIssues.map((iss) =>
+            Activity.create({
+              issue: iss._id,
+              actor: user.id,
+              action: 'ASSIGNEE_UPDATED',
+              field: 'assignee',
+              oldValue: iss.assignee ? iss.assignee.toString() : null,
+              newValue: null,
+              createdAt: new Date(),
+            })
+          )
+        );
+      }
+
       project.members = memberIds;
     }
 
@@ -148,6 +191,35 @@ class ProjectService {
     projectObj.issueCount = issueCount;
     projectObj.memberCount = updated.members.length;
     return projectObj;
+  }
+
+  /**
+   * Delete a project and cascade delete all its issues, comments, and activities (Admin only).
+   */
+  async deleteProject(projectId, user) {
+    const project = await Project.findById(projectId);
+    if (!project) {
+      const error = new Error('Project not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Find all issues under this project
+    const issues = await Issue.find({ project: projectId }).select('_id');
+    const issueIds = issues.map((i) => i._id);
+
+    if (issueIds.length > 0) {
+      await Comment.deleteMany({ issue: { $in: issueIds } });
+      await Activity.deleteMany({ issue: { $in: issueIds } });
+      await Issue.deleteMany({ project: projectId });
+    }
+
+    await Project.findByIdAndDelete(projectId);
+
+    return {
+      deletedProjectId: projectId,
+      deletedIssuesCount: issueIds.length,
+    };
   }
 }
 

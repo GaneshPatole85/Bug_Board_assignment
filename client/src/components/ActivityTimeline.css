@@ -68,7 +68,30 @@
 
 .timeline-detail {
   font-size: 0.825rem;
+  color: var(--color-ink);
+  line-height: 1.4;
+}
+
+.timeline-role-badge {
+  font-size: 0.75rem;
   color: var(--color-slate);
+}
+
+.activity-val-old {
+  color: var(--color-slate);
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.activity-arrow {
+  color: var(--color-accent);
+  font-weight: 600;
+  margin: 0 2px;
+}
+
+.activity-val-new {
+  color: var(--color-ink);
+  font-weight: 600;
 }
 
 .activity-loading,

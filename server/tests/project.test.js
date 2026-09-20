@@ -263,4 +263,48 @@ describe('Project API Endpoints (Phase 3)', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe('DELETE /api/v1/projects/:projectId', () => {
+    test('1. Admin can delete project and cascade deletes all issues and comments', async () => {
+      const project = await Project.create({
+        name: 'Project to Delete',
+        key: 'DELPROJ',
+        members: [adminUser._id, devUser._id],
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/projects/${project._id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      // Verify project is removed
+      const found = await Project.findById(project._id);
+      expect(found).toBeNull();
+    });
+
+    test('2. Non-admin receives 403 on delete attempt', async () => {
+      const project = await Project.create({
+        name: 'Protected Project',
+        key: 'PROT1',
+        members: [adminUser._id, devUser._id],
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/projects/${project._id}`)
+        .set('Authorization', `Bearer ${devToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    test('3. Non-existent project returns 404', async () => {
+      const fakeId = new mongoose.Types.ObjectId().toString();
+      const res = await request(app)
+        .delete(`/api/v1/projects/${fakeId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(404);
+    });
+  });
 });

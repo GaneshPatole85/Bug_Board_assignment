@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { RoleBadge } from '../components/ui/Badge.jsx';
+import NotificationBell from '../components/NotificationBell.jsx';
 import './MainLayout.css';
 
 export const MainLayout = () => {
@@ -113,6 +114,7 @@ export const MainLayout = () => {
           {/* User Session Bar */}
           {isAuthenticated && user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }} id="user-header-profile">
+              <NotificationBell />
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-ink)' }}>
                   {user.name}

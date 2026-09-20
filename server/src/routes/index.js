@@ -5,6 +5,8 @@ import projectRoutes from './project.routes.js';
 import issueRoutes from './issue.routes.js';
 import userRoutes from './user.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
+import notificationRoutes from './notification.routes.js';
+import attachmentRoutes from './attachment.routes.js';
 
 const apiRouter = Router();
 
@@ -15,6 +17,8 @@ apiRouter.use('/users', userRoutes);
 apiRouter.use('/projects', projectRoutes);
 apiRouter.use('/issues', issueRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
+apiRouter.use('/notifications', notificationRoutes);
+apiRouter.use('/attachments', attachmentRoutes);
 
 export default apiRouter;
 

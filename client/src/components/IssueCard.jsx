@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import { StatusBadge, PriorityBadge, SeverityBadge, KeyBadge } from './ui/Badge.jsx';
 import './IssueCard.css';
 
@@ -10,8 +11,15 @@ const getInitials = (name) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export const IssueCard = ({ issue }) => {
+export const IssueCard = ({ issue, onDelete }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const currentUserId = user?._id || user?.id;
+  const reporterId = issue.reporter?._id || (typeof issue.reporter === 'string' ? issue.reporter : null);
+  const canDelete =
+    user?.role === 'Admin' ||
+    (reporterId && currentUserId && reporterId.toString() === currentUserId.toString());
 
   const handleCardClick = () => {
     navigate(`/issues/${issue._id}`);
@@ -33,8 +41,24 @@ export const IssueCard = ({ issue }) => {
       }}
     >
       <div className="card-top-row">
-        <KeyBadge>{issueKey}</KeyBadge>
-        <StatusBadge status={issue.status} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <KeyBadge>{issueKey}</KeyBadge>
+          <StatusBadge status={issue.status} />
+        </div>
+        {onDelete && canDelete && (
+          <button
+            type="button"
+            className="issue-row-delete-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(issue);
+            }}
+            title="Delete issue"
+            aria-label={`Delete issue ${issueKey}`}
+          >
+            🗑️
+          </button>
+        )}
       </div>
 
       <h3 className="card-issue-title">{issue.title}</h3>

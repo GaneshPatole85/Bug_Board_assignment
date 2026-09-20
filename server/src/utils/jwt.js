@@ -13,6 +13,8 @@ export const signToken = (payload, expiresIn = env.JWT_EXPIRES_IN) => {
       ? { sub: payload._id.toString(), role: payload.role }
       : payload && payload._id
       ? { sub: payload._id.toString(), role: payload.role }
+      : payload && payload.sub
+      ? { sub: payload.sub.toString(), role: payload.role }
       : payload;
 
   return jwt.sign(plainPayload, env.JWT_SECRET, {

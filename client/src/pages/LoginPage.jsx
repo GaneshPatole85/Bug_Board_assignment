@@ -21,17 +21,26 @@ export const LoginPage = () => {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
-      setError('Please enter both email and password.');
+    if (!email.trim()) {
+      setError('Email address is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address (e.g. name@company.com).');
+      return;
+    }
+    if (!password) {
+      setError('Password is required.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await login({ email, password });
+      await login({ email: email.trim(), password });
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid email or password.');
+      setError(err.message || 'Invalid email or password. Please check your credentials.');
     } finally {
       setIsSubmitting(false);
     }

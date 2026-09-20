@@ -25,6 +25,7 @@ export const IssueForm = ({
   const [assignee, setAssignee] = useState('');
   const [projectMembers, setProjectMembers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [errorMsg, setErrorMsg] = useState('');
 
   // Update selected project and fetch project members
@@ -38,6 +39,7 @@ export const IssueForm = ({
     setSeverity('Medium');
     setPriority('Medium');
     setAssignee('');
+    setFieldErrors({});
     setErrorMsg('');
   }, [isOpen, preselectedProjectId, projects]);
 
@@ -70,22 +72,47 @@ export const IssueForm = ({
     }
   }, [projectId, projects]);
 
+  /** Client-side validation — returns fieldErrors map or empty object if valid */
+  const validateFields = () => {
+    const errors = {};
+
+    if (!projectId) {
+      errors.project = 'Please select a target project.';
+    }
+
+    if (!title.trim()) {
+      errors.title = 'Issue title is required.';
+    } else if (title.trim().length < 3) {
+      errors.title = 'Issue title must be at least 3 characters.';
+    } else if (title.trim().length > 200) {
+      errors.title = 'Issue title cannot exceed 200 characters.';
+    }
+
+    if (!description.trim()) {
+      errors.description = 'Issue description is required.';
+    } else if (description.trim().length > 5000) {
+      errors.description = 'Description cannot exceed 5000 characters.';
+    }
+
+    return errors;
+  };
+
+  const clearFieldError = (field) => {
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!title.trim()) {
-      setErrorMsg('Issue title is required.');
+    const clientErrors = validateFields();
+    if (Object.keys(clientErrors).length > 0) {
+      setFieldErrors(clientErrors);
       return;
     }
-    if (!description.trim()) {
-      setErrorMsg('Issue description is required.');
-      return;
-    }
-    if (!projectId) {
-      setErrorMsg('Please select a target project.');
-      return;
-    }
+    setFieldErrors({});
 
     setIsSubmitting(true);
     try {
@@ -108,11 +135,20 @@ export const IssueForm = ({
       onSuccess();
       onClose();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to create issue. Please check inputs.');
+      if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
+        setFieldErrors(err.fieldErrors);
+        setErrorMsg('Please fix the errors highlighted below.');
+      } else {
+        setErrorMsg(err.message || 'Failed to create issue. Please check your inputs and try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const developerMembers = projectMembers.filter((m) => m.role === 'Developer');
+  const titleRemaining = 200 - title.length;
+  const descRemaining = 5000 - description.length;
 
   return (
     <Modal
@@ -121,23 +157,25 @@ export const IssueForm = ({
       title="Create New Issue"
       id="issue-form-modal"
     >
-      <form onSubmit={handleSubmit} className="issue-form">
+      <form onSubmit={handleSubmit} className="issue-form" noValidate>
+        {/* General error banner */}
         {errorMsg && (
-          <div className="form-alert-error" role="alert">
+          <div className="form-alert-error" role="alert" id="issue-form-error">
             {errorMsg}
           </div>
         )}
 
-        <div className="form-group">
+        {/* Project selector */}
+        <div className={`form-group ${fieldErrors.project ? 'field-error' : ''}`}>
           <label htmlFor="issue-project" className="form-label">
             Project <span className="req">*</span>
           </label>
           <select
             id="issue-project"
-            className="form-select"
+            className={`form-select ${fieldErrors.project ? 'input-invalid' : ''}`}
             value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            required
+            onChange={(e) => { setProjectId(e.target.value); clearFieldError('project'); }}
+            aria-invalid={Boolean(fieldErrors.project)}
           >
             <option value="" disabled>Select target project...</option>
             {projects.map((p) => (
@@ -146,45 +184,80 @@ export const IssueForm = ({
               </option>
             ))}
           </select>
+          {fieldErrors.project && (
+            <span className="field-error-msg" role="alert">⚠ {fieldErrors.project}</span>
+          )}
+          {projects.length === 0 && (
+            <span className="form-hint info-hint">
+              ℹ️ No projects available. An admin must create a project first.
+            </span>
+          )}
         </div>
 
-        <div className="form-group">
+        {/* Title */}
+        <div className={`form-group ${fieldErrors.title ? 'field-error' : ''}`}>
           <label htmlFor="issue-title" className="form-label">
             Title <span className="req">*</span>
           </label>
           <input
             id="issue-title"
             type="text"
-            className="form-input"
+            className={`form-input ${fieldErrors.title ? 'input-invalid' : ''}`}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Concise summary of the problem"
+            onChange={(e) => { setTitle(e.target.value); clearFieldError('title'); }}
+            placeholder="Concise summary of the problem (min. 3 characters)"
             maxLength={200}
-            required
+            aria-describedby={fieldErrors.title ? 'issue-title-error' : 'issue-title-count'}
+            aria-invalid={Boolean(fieldErrors.title)}
           />
+          {fieldErrors.title ? (
+            <span className="field-error-msg" id="issue-title-error" role="alert">
+              ⚠ {fieldErrors.title}
+            </span>
+          ) : (
+            <span
+              id="issue-title-count"
+              className={`form-hint char-count ${titleRemaining < 20 ? 'char-count-warn' : ''}`}
+            >
+              {title.length}/200 characters
+            </span>
+          )}
         </div>
 
-        <div className="form-group">
+        {/* Description */}
+        <div className={`form-group ${fieldErrors.description ? 'field-error' : ''}`}>
           <label htmlFor="issue-description" className="form-label">
             Description <span className="req">*</span>
           </label>
           <textarea
             id="issue-description"
-            className="form-textarea"
+            className={`form-textarea ${fieldErrors.description ? 'input-invalid' : ''}`}
             rows={4}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => { setDescription(e.target.value); clearFieldError('description'); }}
             placeholder="Steps to reproduce, expected vs actual behavior, stack trace..."
             maxLength={5000}
-            required
+            aria-describedby={fieldErrors.description ? 'issue-desc-error' : 'issue-desc-count'}
+            aria-invalid={Boolean(fieldErrors.description)}
           />
+          {fieldErrors.description ? (
+            <span className="field-error-msg" id="issue-desc-error" role="alert">
+              ⚠ {fieldErrors.description}
+            </span>
+          ) : (
+            <span
+              id="issue-desc-count"
+              className={`form-hint char-count ${descRemaining < 200 ? 'char-count-warn' : ''}`}
+            >
+              {description.length}/5000 characters
+            </span>
+          )}
         </div>
 
+        {/* Severity & Priority row */}
         <div className="form-row-2">
           <div className="form-group">
-            <label htmlFor="issue-severity" className="form-label">
-              Severity
-            </label>
+            <label htmlFor="issue-severity" className="form-label">Severity</label>
             <select
               id="issue-severity"
               className="form-select"
@@ -198,9 +271,7 @@ export const IssueForm = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="issue-priority" className="form-label">
-              Priority
-            </label>
+            <label htmlFor="issue-priority" className="form-label">Priority</label>
             <select
               id="issue-priority"
               className="form-select"
@@ -214,10 +285,9 @@ export const IssueForm = ({
           </div>
         </div>
 
+        {/* Assignee */}
         <div className="form-group">
-          <label htmlFor="issue-assignee" className="form-label">
-            Assignee
-          </label>
+          <label htmlFor="issue-assignee" className="form-label">Assignee</label>
           <select
             id="issue-assignee"
             className="form-select"
@@ -225,21 +295,25 @@ export const IssueForm = ({
             onChange={(e) => setAssignee(e.target.value)}
           >
             <option value="">Unassigned</option>
-            {projectMembers
-              .filter((m) => m.role === 'Developer')
-              .map((member) => {
-                const memId = member._id || member;
-                const memName = member.name || member.email || memId;
-                return (
-                  <option key={memId} value={memId}>
-                    {memName}
-                  </option>
-                );
-              })}
+            {developerMembers.map((member) => {
+              const memId = member._id || member;
+              const memName = member.name || member.email || memId;
+              return (
+                <option key={memId} value={memId}>
+                  {memName}
+                </option>
+              );
+            })}
           </select>
-          <span className="form-hint">
-            Bugs can only be assigned to Developers belonging to this project.
-          </span>
+          {projectId && developerMembers.length === 0 ? (
+            <span className="form-hint info-hint">
+              ℹ️ No developers are assigned to this project yet. You can assign later.
+            </span>
+          ) : (
+            <span className="form-hint">
+              Bugs can only be assigned to Developers belonging to this project.
+            </span>
+          )}
         </div>
 
         <div className="form-footer">

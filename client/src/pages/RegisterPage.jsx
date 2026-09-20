@@ -19,25 +19,47 @@ export const RegisterPage = () => {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+    if (!name.trim()) {
+      setError('Full name is required.');
+      return;
+    }
+    if (name.trim().length < 2) {
+      setError('Full name must be at least 2 characters.');
       return;
     }
 
+    if (!email.trim()) {
+      setError('Email address is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address (e.g. name@company.com).');
+      return;
+    }
+
+    if (!password) {
+      setError('Password is required.');
+      return;
+    }
     if (password.length < 8) {
       setError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please re-enter your password.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await register({ name, email, password, role });
+      await register({ name: name.trim(), email: email.trim(), password, role });
       // Redirect to login with success message (no auto-login, per design decisions)
       navigate('/login', {
-        state: { message: 'Registration successful! Please sign in with your credentials.' },
+        state: { message: 'Account created successfully! Please sign in with your credentials.' },
       });
     } catch (err) {
-      setError(err.message || 'Registration failed. Please check your inputs.');
+      setError(err.message || 'Registration failed. Please check your inputs and try again.');
     } finally {
       setIsSubmitting(false);
     }

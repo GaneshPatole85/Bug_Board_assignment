@@ -1,5 +1,9 @@
+import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
 import { signToken } from '../utils/jwt.js';
+
+// Pre-computed bcrypt hash (cost factor 12) for constant-time comparison on invalid emails
+const DUMMY_BCRYPT_HASH = '$2a$12$e8uq0eR50a7NfHhYl0mNpe0N3uJ1Bcv89k0z2f5E4O6y1W7qZ2K2y';
 
 export class AuthService {
   /**
@@ -61,6 +65,8 @@ export class AuthService {
     // Explicitly include passwordHash using .select('+passwordHash')
     const user = await User.findOne({ email: normalizedEmail }).select('+passwordHash');
     if (!user) {
+      // Execute dummy comparison to ensure constant-time response window (prevents timing enumeration)
+      await bcrypt.compare(password || '', DUMMY_BCRYPT_HASH);
       throw genericAuthError();
     }
 

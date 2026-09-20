@@ -312,3 +312,205 @@ h3 { font-size: 1.05rem; }  /* ~17px */
     align-items: stretch;
   }
 }
+
+/* Universal Delete Confirmation Modal Styles */
+.delete-confirm-box {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.delete-confirm-text {
+  font-size: 0.925rem;
+  line-height: 1.5;
+  color: var(--color-ink);
+}
+
+.delete-confirm-warning {
+  font-size: 0.825rem;
+  color: #b0234b;
+  background: rgba(214, 69, 69, 0.08);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid #d64545;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ==========================================================================
+   Inline Form Validation Styles (global, shared across all forms)
+   ========================================================================== */
+
+/* Input states */
+.form-input.input-invalid,
+.form-textarea.input-invalid,
+.form-select.input-invalid {
+  border-color: var(--priority-urgent) !important;
+  background-color: rgba(214, 69, 69, 0.04);
+}
+
+.form-input.input-valid,
+.form-textarea.input-valid {
+  border-color: var(--status-resolved) !important;
+}
+
+/* field-error class on form-group tightens the gap */
+.form-group.field-error {
+  /* keeps existing layout */
+}
+
+/* Inline field error message below the input */
+.field-error-msg {
+  font-size: 0.78rem;
+  color: var(--priority-urgent);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.4;
+  margin-top: 2px;
+  animation: fadeInDown 120ms ease;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Character count hint */
+.char-count {
+  text-align: right;
+  transition: color var(--transition-fast);
+}
+
+.char-count-warn {
+  color: var(--priority-high) !important;
+  font-weight: 600;
+}
+
+/* Info hint (blue-ish tonal) */
+.form-hint.info-hint {
+  color: var(--status-in-progress);
+}
+
+/* Key validity badge inside the key input wrapper */
+.key-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.key-input-wrapper .form-input {
+  padding-right: 32px;
+}
+
+.key-validity-indicator {
+  position: absolute;
+  right: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.key-validity-indicator.valid  { color: var(--status-resolved); }
+.key-validity-indicator.invalid { color: var(--priority-urgent); }
+
+/* Members count hint */
+.members-count-hint {
+  color: var(--status-resolved);
+  font-weight: 500;
+}
+
+/* Members empty notice */
+.members-empty-notice {
+  font-size: 0.82rem;
+  color: var(--status-in-progress);
+  padding: 8px 10px;
+  background-color: rgba(43, 108, 176, 0.06);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(43, 108, 176, 0.15);
+}
+
+/* Members loading */
+.members-loading {
+  font-size: 0.82rem;
+  color: var(--color-slate);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+/* Small inline spinner */
+.loading-spinner-sm {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Alert error banner in forms */
+.form-alert-error {
+  padding: 10px 14px;
+  background-color: rgba(214, 69, 69, 0.08);
+  border: 1px solid rgba(214, 69, 69, 0.25);
+  border-left: 3px solid var(--priority-urgent);
+  color: var(--priority-urgent);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  animation: fadeInDown 150ms ease;
+}
+
+/* Success info alert */
+.form-alert-success {
+  padding: 10px 14px;
+  background-color: rgba(31, 157, 107, 0.08);
+  border: 1px solid rgba(31, 157, 107, 0.25);
+  border-left: 3px solid var(--status-resolved);
+  color: var(--status-resolved);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Info (neutral) alert */
+.form-alert-info {
+  padding: 10px 14px;
+  background-color: rgba(43, 108, 176, 0.07);
+  border: 1px solid rgba(43, 108, 176, 0.2);
+  border-left: 3px solid var(--status-in-progress);
+  color: var(--status-in-progress);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Error banner (page-level) */
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background-color: rgba(214, 69, 69, 0.08);
+  border: 1px solid rgba(214, 69, 69, 0.2);
+  border-left: 3px solid var(--priority-urgent);
+  color: var(--priority-urgent);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+

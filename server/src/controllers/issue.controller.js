@@ -99,3 +99,16 @@ export const getIssueActivities = async (req, res, next) => {
     next(error);
   }
 };
+
+export const deleteIssue = async (req, res, next) => {
+  try {
+    const result = await issueService.deleteIssue(req.params.issueId, req.user);
+    res.status(200).json({
+      success: true,
+      message: 'Issue and associated data deleted successfully',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

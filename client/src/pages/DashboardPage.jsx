@@ -45,6 +45,7 @@ export const DashboardPage = () => {
           <div className="skeleton-box tile-skeleton" />
           <div className="skeleton-box tile-skeleton" />
           <div className="skeleton-box tile-skeleton" />
+          <div className="skeleton-box tile-skeleton" />
         </div>
       </div>
     );
@@ -76,7 +77,8 @@ export const DashboardPage = () => {
   const openPct = totalIssues ? ((byStatus.Open || 0) / totalIssues) * 100 : 0;
   const inProgPct = totalIssues ? (((byStatus['In Progress'] || 0)) / totalIssues) * 100 : 0;
   const testPct = totalIssues ? ((byStatus.Testing || 0) / totalIssues) * 100 : 0;
-  const resolvedPct = totalIssues ? (((byStatus.Resolved || 0) + (byStatus.Closed || 0)) / totalIssues) * 100 : 0;
+  const resolvedPct = totalIssues ? ((byStatus.Resolved || 0) / totalIssues) * 100 : 0;
+  const closedPct = totalIssues ? ((byStatus.Closed || 0) / totalIssues) * 100 : 0;
 
   return (
     <div className="page-container" id="dashboard-page">
@@ -138,6 +140,14 @@ export const DashboardPage = () => {
           Testing ({byStatus.Testing || 0})
         </button>
         <button
+          className="filter-chip chip-resolved"
+          onClick={() => handleChipClick('/issues?status=Resolved')}
+          title="View resolved issues"
+          id="chip-filter-resolved"
+        >
+          Resolved ({byStatus.Resolved || 0})
+        </button>
+        <button
           className="filter-chip chip-critical"
           onClick={() => handleChipClick('/issues?severity=Critical')}
         >
@@ -156,23 +166,25 @@ export const DashboardPage = () => {
           title="Click to view all issues"
         >
           <div className="stat-card-header">
-            <span className="stat-category-label">Repository volume</span>
-            <span className="stat-badge-accent">Total issues</span>
+            <span className="stat-category-label">Total issues</span>
+            <span className="stat-main-number font-mono">{totalIssues}</span>
           </div>
-          <div className="stat-main-number font-mono">{totalIssues}</div>
 
           {/* Proportional Mini Bar */}
           <div className="stat-progress-bar">
             <div className="progress-segment seg-open" style={{ width: `${openPct}%` }} title={`Open: ${byStatus.Open || 0}`} />
             <div className="progress-segment seg-prog" style={{ width: `${inProgPct}%` }} title={`In Progress: ${byStatus['In Progress'] || 0}`} />
             <div className="progress-segment seg-test" style={{ width: `${testPct}%` }} title={`Testing: ${byStatus.Testing || 0}`} />
-            <div className="progress-segment seg-resolved" style={{ width: `${resolvedPct}%` }} title={`Resolved/Closed: ${(byStatus.Resolved || 0) + (byStatus.Closed || 0)}`} />
+            <div className="progress-segment seg-resolved" style={{ width: `${resolvedPct}%` }} title={`Resolved: ${byStatus.Resolved || 0}`} />
+            {closedPct > 0 && (
+              <div className="progress-segment seg-closed" style={{ width: `${closedPct}%` }} title={`Closed: ${byStatus.Closed || 0}`} />
+            )}
           </div>
 
           <div className="stat-progress-legend">
             <span className="legend-item"><span className="legend-dot dot-open" /> Open</span>
-            <span className="legend-item"><span className="legend-dot dot-prog" /> Progress</span>
-            <span className="legend-item"><span className="legend-dot dot-test" /> Testing</span>
+            <span className="legend-item"><span className="legend-dot dot-prog" /> Prog</span>
+            <span className="legend-item"><span className="legend-dot dot-test" /> Test</span>
             <span className="legend-item"><span className="legend-dot dot-resolved" /> Done</span>
           </div>
         </div>
@@ -183,13 +195,14 @@ export const DashboardPage = () => {
           onClick={() => navigate('/issues?status=Open')}
           role="button"
           tabIndex={0}
+          title="Filter by Open issues"
         >
-          <span className="stat-category-label">Awaiting work</span>
-          <div className="tile-number-row">
-            <span className="tile-number font-mono">{byStatus.Open || 0}</span>
+          <div className="stat-tile-top">
+            <span className="stat-category-label">Open</span>
             <StatusBadge status="Open" />
           </div>
-          <span className="stat-subtext">Unstarted bug tickets</span>
+          <div className="tile-number font-mono">{byStatus.Open || 0}</div>
+          <span className="stat-subtext">Awaiting work</span>
         </div>
 
         <div
@@ -197,13 +210,14 @@ export const DashboardPage = () => {
           onClick={() => navigate('/issues?status=In%20Progress')}
           role="button"
           tabIndex={0}
+          title="Filter by In Progress issues"
         >
-          <span className="stat-category-label">In development</span>
-          <div className="tile-number-row">
-            <span className="tile-number font-mono">{byStatus['In Progress'] || 0}</span>
+          <div className="stat-tile-top">
+            <span className="stat-category-label">In Progress</span>
             <StatusBadge status="In Progress" />
           </div>
-          <span className="stat-subtext">Under active remediation</span>
+          <div className="tile-number font-mono">{byStatus['In Progress'] || 0}</div>
+          <span className="stat-subtext">In development</span>
         </div>
 
         <div
@@ -211,13 +225,32 @@ export const DashboardPage = () => {
           onClick={() => navigate('/issues?status=Testing')}
           role="button"
           tabIndex={0}
+          title="Filter by Testing issues"
         >
-          <span className="stat-category-label">QA review</span>
-          <div className="tile-number-row">
-            <span className="tile-number font-mono">{byStatus.Testing || 0}</span>
+          <div className="stat-tile-top">
+            <span className="stat-category-label">Testing</span>
             <StatusBadge status="Testing" />
           </div>
-          <span className="stat-subtext">Pending verification</span>
+          <div className="tile-number font-mono">{byStatus.Testing || 0}</div>
+          <span className="stat-subtext">QA review</span>
+        </div>
+
+        <div
+          className="stat-card console-card stat-tile"
+          onClick={() => navigate('/issues?status=Resolved')}
+          role="button"
+          tabIndex={0}
+          title="Click to view resolved issues"
+          id="stat-tile-resolved"
+        >
+          <div className="stat-tile-top">
+            <span className="stat-category-label">Resolved</span>
+            <StatusBadge status="Resolved" />
+          </div>
+          <div className="tile-number font-mono" style={{ color: 'var(--status-resolved)' }}>
+            {byStatus.Resolved || 0}
+          </div>
+          <span className="stat-subtext">Fix verified</span>
         </div>
 
         <div
@@ -225,15 +258,16 @@ export const DashboardPage = () => {
           onClick={() => navigate('/issues?severity=Critical')}
           role="button"
           tabIndex={0}
+          title="Filter by Critical severity"
         >
-          <span className="stat-category-label">High risk</span>
-          <div className="tile-number-row">
-            <span className="tile-number font-mono" style={{ color: 'var(--priority-urgent)' }}>
-              {bySeverity.Critical || 0}
-            </span>
+          <div className="stat-tile-top">
+            <span className="stat-category-label">Critical</span>
             <SeverityBadge severity="Critical" />
           </div>
-          <span className="stat-subtext">Requires immediate triage</span>
+          <div className="tile-number font-mono" style={{ color: 'var(--priority-urgent)' }}>
+            {bySeverity.Critical || 0}
+          </div>
+          <span className="stat-subtext">High risk</span>
         </div>
       </div>
 

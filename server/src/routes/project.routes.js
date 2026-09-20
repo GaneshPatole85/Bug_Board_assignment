@@ -13,6 +13,7 @@ import {
   listProjects,
   getProjectById,
   updateProject,
+  deleteProject,
 } from '../controllers/project.controller.js';
 
 const router = Router();
@@ -47,6 +48,15 @@ router.patch(
   updateProjectValidator,
   validateRequest,
   updateProject
+);
+
+// DELETE /api/v1/projects/:projectId — Admin only
+router.delete(
+  '/:projectId',
+  authorizeRole(ROLES.ADMIN),
+  projectIdParamValidator,
+  validateRequest,
+  deleteProject
 );
 
 export default router;
