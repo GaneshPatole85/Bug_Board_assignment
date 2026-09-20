@@ -4,6 +4,7 @@ import authRoutes from './auth.routes.js';
 import projectRoutes from './project.routes.js';
 import issueRoutes from './issue.routes.js';
 import userRoutes from './user.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
 
 const apiRouter = Router();
 
@@ -13,6 +14,7 @@ apiRouter.use('/auth', authRoutes);
 apiRouter.use('/users', userRoutes);
 apiRouter.use('/projects', projectRoutes);
 apiRouter.use('/issues', issueRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
 
 export default apiRouter;
 
