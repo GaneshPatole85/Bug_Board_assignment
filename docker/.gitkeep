@@ -1,0 +1,2 @@
+# Docker directory placeholder
+# External helper services (e.g., Mailpit for email, MinIO for object storage) can be containerized here in later phases.
