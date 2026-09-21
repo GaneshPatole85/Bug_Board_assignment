@@ -1,5 +1,6 @@
 # BugBoard — Bug & Issue Tracking System
-NOTE: frontend and backend has centralized (single) .env file at root directory
+
+> **Note**: Both frontend and backend utilize a single, centralized `.env` file at the repository root.
 
 [![Build & Test Suite](https://img.shields.io/badge/Tests-246%20Passed-brightgreen)](server/tests)
 [![OWASP API Security](https://img.shields.io/badge/OWASP%20API%20Top%2010-100%25%20Compliant-blue)](docs/bug-hunt-log.md)
@@ -68,20 +69,19 @@ BugBoard is engineered to solve engineering issue tracking with console-grade pr
 
 ---
 
-## Sample Login Accounts for Reviewers
+## 🔑 Login Credentials for Reviewers & Testing
 
-The application is pre-seeded with live accounts in the MongoDB Atlas database:
+The application is pre-seeded with live accounts in the MongoDB Atlas database. You can use these credentials to sign in immediately:
 
-| Role | Email | Password | Employee ID | Designation | Permissions |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Admin** | `gpatole473@gmail.com` | `Password123!` | `ADM-0001` | `Platform Operations` | Universal project access, project creation & editing, team management, universal status override |
-| **Developer** | `shastrisujata006@gmail.com` | `Password123!` | `DEV-0001` | `Engineering` | Issue assignment, status workflow (`Open` → `In Progress`, `Testing` → `Open`), comments |
-| **Tester** | `tester@bugboard.test` | `Password123!` | `TST-0001` | `Quality Assurance` | Bug reporting, QA verification (`Testing` → `Resolved`), comments |
+| Role | Email | Password | Permissions & Capabilities |
+| :--- | :--- | :--- | :--- |
+| **👑 Admin** | `gpatole473@gmail.com` | `Password123!` | Full administrative control, project creation & editing, team management, role updates (Developer/Tester only), issue assignment, deletion, and universal workflow overrides. |
+| **💻 Developer** | `shastrisujata006@gmail.com` | `Password123!` | Project member, can be assigned issues, transition issue status (`Open` → `In Progress` → `Testing`), post comments, view activities. |
+| **🔍 Tester** | `tester@bugboard.test` | `Password123!` | Project member, bug reporter, quality assurance status verification (`Testing` → `Resolved` / `Open`, `Resolved` → `Closed` / `Open`), post comments. |
 
-### ⚡ 1-Click Quick-Fill Demo Buttons on Login Screen
-On the `/login` screen, reviewers do not need to type credentials manually:
-- Click the **👑 Admin**, **💻 Developer**, or **🔍 Tester** demo buttons.
-- The credentials automatically populate, and the login card header dynamically updates to **"Sign in as Admin"**, **"Sign in as Developer"**, or **"Sign in as Tester"**.
+> [!TIP]
+> **⚡ 1-Click Demo Login on UI**:
+> When opening `http://localhost:5173/login`, you do not need to type credentials manually. Simply click the **👑 Admin**, **💻 Developer**, or **🔍 Tester** quick-fill buttons at the bottom of the login card. The form auto-populates and the submit button changes to **"Sign in as [Role]"** for instant 1-click access.
 
 ---
 
@@ -102,54 +102,35 @@ A complete, production-ready Postman Collection (v2.1.0) is included in the repo
 
 ### 1. Clone & Install Dependencies
 ```bash
-git clone <repository-url>
-cd bugboard
+git clone https://github.com/GaneshPatole85/Bug_Board_assignment.git
+cd Bug_Board_assignment
 
 # Install root, backend, and frontend dependencies
 npm run install:all
 ```
 
-### 2. Configure Environment Files
+### 2. Configure Environment (.env)
+BugBoard uses a single, centralized `.env` configuration file at the repository root:
 ```bash
 # In repository root
 cp .env.example .env
-
-# In server directory
-cp server/.env.example server/.env
-
-# In client directory
-cp client/.env.example client/.env
 ```
+*(The repository is already pre-configured to connect to MongoDB Atlas Cloud Cluster with zero manual setup required).*
 
 ### 3. Start Development Servers
-
-#### Mode A: Cloud Database (MongoDB Atlas — Recommended)
-BugBoard connects directly to your MongoDB Atlas cluster:
-1. In `server/.env`, verify `MONGODB_URI` points to your Atlas connection string:
-   ```env
-   MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.qcm1smb.mongodb.net/bugboard?retryWrites=true&w=majority&appName=Cluster0
-   ```
-2. Start the dev servers:
-   ```bash
-   npm run dev
-   ```
-
-#### Mode B: Instant Zero-Dependency Mode (In-Memory MongoDB)
 ```bash
-# Terminal 1: Backend 
-npm run dev
-
-# Terminal 2: Frontend client
-npm run dev --prefix client
-```
-
-#### Mode C: Standard Local MongoDB
-```bash
-npm run seed --prefix server
+# Start both backend API (port 5000) and frontend SPA (port 5173) concurrently:
 npm run dev
 ```
 
 The frontend will be live at `http://localhost:5173` and the backend at `http://localhost:5000`.
+
+### 4. Log In
+Open `http://localhost:5173/login` in your browser and choose an account:
+- **Admin**: `gpatole473@gmail.com` / `Password123!`
+- **Developer**: `shastrisujata006@gmail.com` / `Password123!`
+- **Tester**: `tester@bugboard.test` / `Password123!`
+*(Or click any of the 1-click demo buttons at the bottom of the card).*
 
 ---
 
