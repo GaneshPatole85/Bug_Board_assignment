@@ -8,7 +8,6 @@ import './MainLayout.css';
 
 export const MainLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [backendHealth, setBackendHealth] = useState({ status: 'checking', message: 'Connecting...' });
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
@@ -17,38 +16,6 @@ export const MainLayout = () => {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
-
-  // Periodic health check against backend API
-  useEffect(() => {
-    let isMounted = true;
-    const checkHealth = async () => {
-      try {
-        const data = await apiClient.get('/health');
-        if (isMounted) {
-          setBackendHealth({
-            status: data.status === 'healthy' ? 'online' : 'degraded',
-            message: data.status === 'healthy' ? 'API Online' : 'Degraded',
-            dbStatus: data.database?.status || 'unknown',
-          });
-        }
-      } catch (err) {
-        if (isMounted) {
-          setBackendHealth({
-            status: 'offline',
-            message: 'API Offline',
-            dbStatus: 'disconnected',
-          });
-        }
-      }
-    };
-
-    checkHealth();
-    const interval = setInterval(checkHealth, 30000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
 
   const handleLogout = () => {
     logout();
@@ -92,25 +59,6 @@ export const MainLayout = () => {
         </div>
 
         <div className="header-right">
-          <div
-            className="system-status-indicator"
-            title={`Backend: ${backendHealth.message} | DB: ${backendHealth.dbStatus || 'unknown'}`}
-            id="system-status-indicator"
-          >
-            <span
-              className="status-dot"
-              style={{
-                backgroundColor:
-                  backendHealth.status === 'online'
-                    ? 'var(--status-resolved)'
-                    : backendHealth.status === 'checking'
-                    ? 'var(--priority-medium)'
-                    : 'var(--priority-urgent)',
-              }}
-            />
-            <span>{backendHealth.message}</span>
-          </div>
-
           {/* User Session Bar */}
           {isAuthenticated && user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }} id="user-header-profile">

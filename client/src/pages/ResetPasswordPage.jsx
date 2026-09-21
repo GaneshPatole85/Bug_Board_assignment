@@ -12,6 +12,8 @@ export const ResetPasswordPage = () => {
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [tokenError, setTokenError] = useState(
     !token ? 'This reset link is invalid or has expired.' : null
@@ -23,6 +25,22 @@ export const ResetPasswordPage = () => {
       setFieldErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
+
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, label: '', percent: 0, color: '' };
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (pwd.length >= 12) score++;
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+    if (score <= 1) return { score: 1, label: 'Weak', percent: 33, color: 'var(--priority-urgent)' };
+    if (score <= 3) return { score: 2, label: 'Fair', percent: 66, color: 'var(--priority-medium)' };
+    return { score: 3, label: 'Strong', percent: 100, color: 'var(--status-resolved)' };
+  };
+
+  const passwordStrength = getPasswordStrength(newPassword);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,7 +81,6 @@ export const ResetPasswordPage = () => {
       addToast('Password reset successfully. Please sign in with your new password.', 'success');
       navigate('/login', { replace: true });
     } catch (err) {
-      // Check if this was an invalid/expired token error (400)
       if (err.status === 400 || (err.message && /invalid or has expired/i.test(err.message))) {
         setTokenError(err.message || 'This reset link is invalid or has expired.');
       } else {
@@ -88,17 +105,22 @@ export const ResetPasswordPage = () => {
   return (
     <div className="auth-card" id="reset-password-card">
       <div className="auth-header">
+        <div className="auth-header-icon-badge">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+        </div>
         <h1 className="auth-title">Create new password</h1>
         <p className="auth-subtitle">Choose a secure password for your account</p>
       </div>
 
       {tokenError ? (
         <div className="auth-alert-error" id="reset-token-error-alert" role="alert">
-          <p style={{ margin: '0 0 0.75rem 0' }}>{tokenError}</p>
+          <p style={{ margin: '0 0 0.75rem 0', fontWeight: 500 }}>{tokenError}</p>
           <Link
             to="/forgot-password"
             id="request-new-reset-link"
-            style={{ fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}
+            style={{ fontWeight: 600, color: 'inherit', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           >
             Request a new reset link &rarr;
           </Link>
@@ -109,24 +131,56 @@ export const ResetPasswordPage = () => {
             <label htmlFor="reset-new-password" className="form-label">
               New Password <span className="field-required">*</span>
             </label>
-            <input
-              id="reset-new-password"
-              type="password"
-              className={`form-input ${fieldErrors.newPassword ? 'input-invalid' : ''}`}
-              value={newPassword}
-              onChange={(e) => {
-                setNewPassword(e.target.value);
-                clearFieldError('newPassword');
-              }}
-              placeholder="At least 8 characters"
-              autoComplete="new-password"
-              aria-invalid={Boolean(fieldErrors.newPassword)}
-              aria-describedby={fieldErrors.newPassword ? 'reset-new-password-error' : undefined}
-            />
+            <div className="input-with-action">
+              <input
+                id="reset-new-password"
+                type={showNewPassword ? 'text' : 'password'}
+                className={`form-input ${fieldErrors.newPassword ? 'input-invalid' : ''}`}
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  clearFieldError('newPassword');
+                }}
+                placeholder="At least 8 characters"
+                autoComplete="new-password"
+                autoFocus
+                aria-invalid={Boolean(fieldErrors.newPassword)}
+                aria-describedby={fieldErrors.newPassword ? 'reset-new-password-error' : undefined}
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+              >
+                {showNewPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
+              </button>
+            </div>
             {fieldErrors.newPassword && (
               <span className="field-error-msg" id="reset-new-password-error" role="alert">
                 ⚠ {fieldErrors.newPassword}
               </span>
+            )}
+
+            {newPassword && (
+              <div className="password-strength-container" style={{ marginTop: '6px' }}>
+                <div className="password-strength-track">
+                  <div
+                    className="password-strength-bar"
+                    style={{
+                      width: `${passwordStrength.percent}%`,
+                      backgroundColor: passwordStrength.color,
+                    }}
+                  />
+                </div>
+                <span className="password-strength-label" style={{ color: passwordStrength.color }}>
+                  {passwordStrength.label}
+                </span>
+              </div>
             )}
           </div>
 
@@ -134,23 +188,42 @@ export const ResetPasswordPage = () => {
             <label htmlFor="reset-confirm-password" className="form-label">
               Confirm New Password <span className="field-required">*</span>
             </label>
-            <input
-              id="reset-confirm-password"
-              type="password"
-              className={`form-input ${fieldErrors.confirmNewPassword ? 'input-invalid' : ''}`}
-              value={confirmNewPassword}
-              onChange={(e) => {
-                setConfirmNewPassword(e.target.value);
-                clearFieldError('confirmNewPassword');
-              }}
-              placeholder="••••••••"
-              autoComplete="new-password"
-              aria-invalid={Boolean(fieldErrors.confirmNewPassword)}
-              aria-describedby={fieldErrors.confirmNewPassword ? 'reset-confirm-password-error' : undefined}
-            />
+            <div className="input-with-action">
+              <input
+                id="reset-confirm-password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                className={`form-input ${fieldErrors.confirmNewPassword ? 'input-invalid' : ''}`}
+                value={confirmNewPassword}
+                onChange={(e) => {
+                  setConfirmNewPassword(e.target.value);
+                  clearFieldError('confirmNewPassword');
+                }}
+                placeholder="Repeat new password"
+                autoComplete="new-password"
+                aria-invalid={Boolean(fieldErrors.confirmNewPassword)}
+                aria-describedby={fieldErrors.confirmNewPassword ? 'reset-confirm-password-error' : undefined}
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                {showConfirmPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
+              </button>
+            </div>
             {fieldErrors.confirmNewPassword && (
               <span className="field-error-msg" id="reset-confirm-password-error" role="alert">
                 ⚠ {fieldErrors.confirmNewPassword}
+              </span>
+            )}
+            {newPassword && confirmNewPassword && newPassword === confirmNewPassword && (
+              <span className="form-success-hint" style={{ fontSize: '0.75rem', color: 'var(--status-resolved)', marginTop: '2px', fontWeight: 500 }}>
+                ✓ Passwords match
               </span>
             )}
           </div>
@@ -161,14 +234,25 @@ export const ResetPasswordPage = () => {
             id="reset-password-submit-btn"
             className="auth-submit-btn"
           >
-            {isSubmitting ? 'Resetting Password...' : 'Reset Password'}
+            {isSubmitting ? (
+              <>
+                <span className="btn-spinner" /> Resetting Password...
+              </>
+            ) : (
+              'Reset Password & Sign in'
+            )}
           </button>
         </form>
       )}
 
-      <div className="auth-footer-prompt" style={{ marginTop: '1.5rem' }}>
-        Back to{' '}
-        <Link to="/login">Sign in</Link>
+      <div className="auth-footer-prompt">
+        <Link to="/login" className="back-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Return to Sign in
+        </Link>
       </div>
     </div>
   );

@@ -119,9 +119,14 @@ export const LoginPage = () => {
         </div>
 
         <div className={`form-group ${fieldErrors.password ? 'field-error' : ''}`}>
-          <label htmlFor="login-password" className="form-label">
-            Password
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label htmlFor="login-password" className="form-label" style={{ marginBottom: 0 }}>
+              Password
+            </label>
+            <Link to="/forgot-password" id="login-forgot-password-link" className="forgot-password-link">
+              Forgot password?
+            </Link>
+          </div>
           <input
             id="login-password"
             type="password"
@@ -151,8 +156,6 @@ export const LoginPage = () => {
       </form>
 
       <div className="auth-footer-prompt">
-        <Link to="/forgot-password" id="login-forgot-password-link">Forgot password?</Link>
-        {' · '}
         Don't have an account?{' '}
         <Link to="/register">Create one</Link>
       </div>
