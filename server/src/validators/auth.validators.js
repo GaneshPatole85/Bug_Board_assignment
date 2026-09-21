@@ -58,3 +58,82 @@ export const loginValidator = [
     .notEmpty()
     .withMessage('Password is required'),
 ];
+
+/**
+ * Validation rules for changing password while logged in.
+ */
+export const changePasswordValidator = [
+  body('currentPassword')
+    .isString()
+    .withMessage('Current password must be a string')
+    .notEmpty()
+    .withMessage('Current password is required'),
+
+  body('newPassword')
+    .isString()
+    .withMessage('New password must be a string')
+    .notEmpty()
+    .withMessage('New password is required')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
+
+  body('confirmNewPassword')
+    .isString()
+    .withMessage('Confirm new password must be a string')
+    .notEmpty()
+    .withMessage('Please confirm your new password')
+    .custom((value, { req }) => {
+      if (value !== req.body.newPassword) {
+        throw new Error('New passwords do not match');
+      }
+      return true;
+    }),
+];
+
+/**
+ * Validation rules for initiating a forgot password request.
+ */
+export const forgotPasswordValidator = [
+  body('email')
+    .isString()
+    .withMessage('Email must be a string')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+];
+
+/**
+ * Validation rules for completing a password reset using token.
+ */
+export const resetPasswordValidator = [
+  body('token')
+    .isString()
+    .withMessage('Reset token must be a string')
+    .trim()
+    .notEmpty()
+    .withMessage('Reset token is required'),
+
+  body('newPassword')
+    .isString()
+    .withMessage('New password must be a string')
+    .notEmpty()
+    .withMessage('New password is required')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
+
+  body('confirmNewPassword')
+    .isString()
+    .withMessage('Confirm new password must be a string')
+    .notEmpty()
+    .withMessage('Please confirm your new password')
+    .custom((value, { req }) => {
+      if (value !== req.body.newPassword) {
+        throw new Error('New passwords do not match');
+      }
+      return true;
+    }),
+];
+

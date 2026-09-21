@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { Notification } from '../models/Notification.js';
 import { NotFoundError } from '../utils/errors.js';
 import { User } from '../models/User.js';
+import { ROLES } from '../constants/roles.js';
 import { logger } from '../utils/logger.js';
 
 class NotificationService {
@@ -20,15 +21,17 @@ class NotificationService {
       const user = process.env.SMTP_USER || '';
       const pass = process.env.SMTP_PASS || '';
 
+      const isSecure = port === 465;
       const options = {
         host,
         port,
-        secure: port === 465,
-        ignoreTLS: true,
+        secure: isSecure,
       };
 
       if (user && pass) {
         options.auth = { user, pass };
+      } else if (host === 'localhost' || host === '127.0.0.1' || host === 'mailpit') {
+        options.ignoreTLS = true;
       }
 
       this._transporter = nodemailer.createTransport(options);
@@ -45,7 +48,7 @@ class NotificationService {
     try {
       if (!to) return;
       const transporter = this._getTransporter();
-      const from = process.env.SMTP_FROM || 'no-reply@bugboard.test';
+      const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@bugboard.test';
 
       await transporter.sendMail({
         from: `"BugBoard" <${from}>`,
@@ -58,6 +61,145 @@ class NotificationService {
     } catch (err) {
       // Fire-and-forget: Log failure, never throw
       logger.warn({ err: err.message, to, subject }, 'Failed to dispatch notification email (continuing)');
+    }
+  }
+
+  /**
+   * Notify newly registered user and system administrator upon account registration
+   */
+  async notifyRegistration({ user }) {
+    try {
+      if (!user || !user.email) return;
+
+      const role = user.role || 'Member';
+      const empId = user.employeeId || 'Pending';
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+      const loginUrl = `${clientUrl}/login`;
+
+      // 1. Welcome email to the newly registered user
+      const welcomeSubject = `Welcome to BugBoard, ${user.name}!`;
+      const welcomeText = `Hello ${user.name},\n\nYour BugBoard account has been successfully created.\n\nAccount Details:\n- Name: ${user.name}\n- Email: ${user.email}\n- Role: ${role}\n- Employee ID: ${empId}\n\nYou can sign in at: ${loginUrl}\n\nBest regards,\nThe BugBoard Team`;
+      const welcomeHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #4f46e5; margin-top: 0;">Welcome to BugBoard!</h2>
+          <p>Hello <strong>${user.name}</strong>,</p>
+          <p>Your BugBoard account has been successfully registered. You can now log in and collaborate on tracked issues.</p>
+          <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="margin: 4px 0;"><strong>Employee ID:</strong> <span style="font-family: monospace; color: #4f46e5;">${empId}</span></p>
+            <p style="margin: 4px 0;"><strong>Role:</strong> ${role}</p>
+            <p style="margin: 4px 0;"><strong>Registered Email:</strong> ${user.email}</p>
+          </div>
+          <p>
+            <a href="${loginUrl}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Sign In to BugBoard
+            </a>
+          </p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #64748b;">If you did not register for BugBoard, please contact your administrator.</p>
+        </div>
+      `;
+
+      await this._sendEmailSafe({
+        to: user.email,
+        subject: welcomeSubject,
+        text: welcomeText,
+        html: welcomeHtml,
+      });
+
+      // 2. Alert email to Administrators
+      const adminUsers = await User.find({ role: ROLES.ADMIN, isActive: true }).select('name email _id');
+      const adminEmailFromEnv = process.env.ADMIN_EMAIL;
+
+      const adminEmails = new Set(adminUsers.map((a) => a.email).filter(Boolean));
+      if (adminEmailFromEnv) adminEmails.add(adminEmailFromEnv.toLowerCase().trim());
+
+      const adminSubject = `[BugBoard] New User Registered: ${user.name} (${role})`;
+      const adminText = `A new user has registered on BugBoard:\n\n- Name: ${user.name}\n- Email: ${user.email}\n- Role: ${role}\n- Employee ID: ${empId}\n- Registered At: ${new Date().toISOString()}`;
+      const adminHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h3 style="color: #0f172a; margin-top: 0;">New User Registration Alert</h3>
+          <p>A new user has registered on BugBoard:</p>
+          <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 15px 0;">
+            <p style="margin: 4px 0;"><strong>Name:</strong> ${user.name}</p>
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${user.email}</p>
+            <p style="margin: 4px 0;"><strong>Role:</strong> ${role}</p>
+            <p style="margin: 4px 0;"><strong>Employee ID:</strong> <span style="font-family: monospace;">${empId}</span></p>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">You can review team members and assignments from the Team Management console.</p>
+        </div>
+      `;
+
+      for (const to of adminEmails) {
+        if (to !== user.email) {
+          await this._sendEmailSafe({
+            to,
+            subject: adminSubject,
+            text: adminText,
+            html: adminHtml,
+          });
+        }
+      }
+
+      // 3. In-App Notification for active Admin users
+      for (const admin of adminUsers) {
+        await Notification.create({
+          recipient: admin._id,
+          type: 'USER_REGISTERED',
+          actor: user._id || user.id,
+          title: `New user registration: ${user.name}`,
+          message: `${user.name} (${user.email}) registered as ${role} [${empId}].`,
+        });
+      }
+    } catch (err) {
+      logger.warn({ err: err.message }, 'Failed to record registration notification');
+    }
+  }
+
+  /**
+   * Send password reset link to user.
+   * Fire-and-forget: does not throw if email delivery fails.
+   */
+  async sendPasswordResetEmail({ user, token }) {
+    try {
+      if (!user || !user.email || !token) return;
+
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+      const resetUrl = `${clientUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+      const subject = '[BugBoard] Password Reset Request';
+      const text = `Hello ${user.name},\n\nYou requested a password reset for your BugBoard account.\n\nPlease use the following link to reset your password:\n${resetUrl}\n\nThis link is valid for 30 minutes and can only be used once.\n\nIf you did not request this password reset, please ignore this email or contact your administrator if you suspect unauthorized activity.\n\nBest regards,\nThe BugBoard Team`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #0f172a; margin-top: 0;">Password Reset Request</h2>
+          <p>Hello <strong>${user.name}</strong>,</p>
+          <p>We received a request to reset your BugBoard account password.</p>
+          <div style="margin: 25px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background-color: #0f766e; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Reset Password
+            </a>
+          </div>
+          <p style="font-size: 14px; color: #475569;">
+            Or copy and paste this link into your browser:<br />
+            <a href="${resetUrl}" style="color: #0f766e; word-break: break-all;">${resetUrl}</a>
+          </p>
+          <p style="font-size: 13px; color: #64748b; margin-top: 20px;">
+            <strong>Important:</strong> This reset link is valid for <strong>30 minutes</strong> and can only be used once.
+          </p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #94a3b8;">
+            If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
+          </p>
+        </div>
+      `;
+
+      await this._sendEmailSafe({
+        to: user.email,
+        subject,
+        text,
+        html,
+      });
+    } catch (err) {
+      logger.warn({ err: err.message }, 'Failed to dispatch password reset email');
     }
   }
 

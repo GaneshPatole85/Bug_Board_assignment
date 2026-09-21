@@ -74,7 +74,9 @@ export const NotificationBell = () => {
       }
     }
     setIsOpen(false);
-    if (notif.issue?._id || notif.issue) {
+    if (notif.type === 'USER_REGISTERED') {
+      navigate('/team');
+    } else if (notif.issue?._id || notif.issue) {
       const issueId = notif.issue._id || notif.issue;
       navigate(`/issues/${issueId}`);
     }

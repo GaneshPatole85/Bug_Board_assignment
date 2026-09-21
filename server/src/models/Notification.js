@@ -10,13 +10,13 @@ const notificationSchema = new Schema(
     },
     type: {
       type: String,
-      enum: ['ASSIGNMENT', 'STATUS_CHANGE'],
+      enum: ['ASSIGNMENT', 'STATUS_CHANGE', 'USER_REGISTERED'],
       required: [true, 'Notification type is required'],
     },
     issue: {
       type: Schema.Types.ObjectId,
       ref: 'Issue',
-      required: [true, 'Associated issue is required'],
+      required: false,
       index: true,
     },
     actor: {

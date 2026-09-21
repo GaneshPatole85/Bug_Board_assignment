@@ -15,8 +15,9 @@
     "test:phase4": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/phase4.test.js",
     "test:bonus": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/bonus.test.js",
     "test:users": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/user-management.test.js",
+    "test:password": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/password-management.test.js",
     "test:hunt": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/deep-hunt.test.js",
-    "test:all": "npm run test && npm run test:auth && npm run test:phase3 && npm run test:phase4 && npm run test:bonus && npm run test:users && npm run test:hunt",
+    "test:all": "npm run test && npm run test:auth && npm run test:password && npm run test:phase3 && npm run test:phase4 && npm run test:bonus && npm run test:users && npm run test:hunt",
     "seed": "node src/utils/seed.js",
     "migrate:employee-ids": "node src/utils/migrate-employee-ids.js"
   },

@@ -65,12 +65,26 @@ const userSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+    passwordResetTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
     toJSON: {
       transform: (doc, ret) => {
         delete ret.passwordHash;
+        delete ret.passwordResetTokenHash;
         delete ret.__v;
         return ret;
       },
@@ -78,6 +92,7 @@ const userSchema = new mongoose.Schema(
     toObject: {
       transform: (doc, ret) => {
         delete ret.passwordHash;
+        delete ret.passwordResetTokenHash;
         delete ret.__v;
         return ret;
       },

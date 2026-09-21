@@ -39,8 +39,8 @@ export const authenticate = async (req, res, next) => {
   try {
     const decoded = verifyToken(token);
 
-    // Look up user status in database to immediately enforce deactivations
-    const userDoc = await User.findById(decoded.sub).select('role isActive').lean();
+    // Look up user status in database to immediately enforce deactivations and password invalidations
+    const userDoc = await User.findById(decoded.sub).select('role isActive passwordChangedAt').lean();
     if (!userDoc) {
       logger.warn({ ip: req.ip, path: req.originalUrl, userId: decoded.sub }, 'Auth failure: User account no longer exists');
       return res.status(401).json({
@@ -57,6 +57,19 @@ export const authenticate = async (req, res, next) => {
         message: 'Your account has been deactivated. Contact an administrator.',
         errors: [],
       });
+    }
+
+    // Invalidate sessions issued prior to a password change
+    if (userDoc.passwordChangedAt) {
+      const passwordChangedAtSeconds = parseInt(userDoc.passwordChangedAt.getTime() / 1000, 10);
+      if (decoded.iat < passwordChangedAtSeconds) {
+        logger.warn({ ip: req.ip, path: req.originalUrl, userId: decoded.sub }, 'Auth failure: Session expired due to password change');
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized: Session expired, please sign in again',
+          errors: [],
+        });
+      }
     }
 
     // Minimal claims attached to req.user

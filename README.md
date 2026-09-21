@@ -271,14 +271,18 @@ BugBoard incorporates a comprehensive user management and profile system designe
    - When AWS S3 credentials are omitted, the storage driver transparently stores files on local disk in `server/uploads/` with UUID keys.
 5. **Assignee Membership Enforcement**:
    - An issue can only be assigned to a user who is a registered member of the issue's parent project.
-6. **Stateless JWT with Real-Time Revocation**:
-   - While tokens remain stateless and cryptographically signed, an ultra-lean `.select('role isActive').lean()` check in `authenticate` guarantees that deactivated accounts are severed immediately without requiring Redis.
+6. **Stateless JWT with Real-Time Revocation & Session Invalidation**:
+   - While tokens remain stateless and cryptographically signed, an ultra-lean `.select('role isActive passwordChangedAt').lean()` check in `authenticate` guarantees that deactivated accounts are severed immediately without requiring Redis.
+   - **Password Change Invalidation**: Updating your password immediately invalidates all pre-existing sessions across devices. The `authenticate` middleware rejects any JWT whose issued-at timestamp (`iat`) predates `passwordChangedAt`.
+7. **Forgot Password Anti-Enumeration & Single-Use SHA-256 Tokens**:
+   - `POST /auth/forgot-password` returns the exact same generic 200 response regardless of whether an email exists, preventing user enumeration.
+   - Reset tokens use 32 bytes of cryptographically secure randomness (`crypto.randomBytes(32)`). Only the SHA-256 hash is persisted in MongoDB with a 30-minute expiry, and is immediately cleared upon use or retry.
 
 ---
 
 ## Automated Testing Suite
 
-BugBoard maintains an automated test suite with **204 tests passing with 100% success rate**:
+BugBoard maintains an automated test suite with **218 tests passing with 100% success rate**:
 
 ```bash
 # Run all core foundation tests
@@ -287,22 +291,25 @@ npm run test --prefix server
 # Run authentication & RBAC test suite
 npm run test:auth --prefix server
 
-# Run Phase 3 Projects & Issues test suite
+# Run Change Password & Forgot/Reset Password test suite (14 tests)
+npm run test:password --prefix server
+
+# Run Phase 3 Projects & Issues test suite (39 tests)
 npm run test:phase3 --prefix server
 
-# Run Phase 4 Comments, Activity & Dashboard test suite
+# Run Phase 4 Comments, Activity & Dashboard test suite (11 tests)
 npm run test:phase4 --prefix server
 
-# Run Bonus Features test suite (Kanban, Attachments, Notifications)
+# Run Bonus Features test suite (Kanban, Attachments, Notifications) (14 tests)
 npm run test:bonus --prefix server
 
-# Run User Profiles & Admin User Management test suite (13 tests)
+# Run User Profiles & Admin User Management test suite (16 tests)
 npm run test:users --prefix server
 
-# Run comprehensive Bug Hunt & Fuzzing suite (105 tests)
+# Run comprehensive Deep Bug Hunt & Adversarial Fuzzing suite (129 tests)
 npm run test:hunt --prefix server
 
-# Run the complete test suite in sequence (204 tests)
+# Run the complete test suite in sequence
 npm run test:all --prefix server
 ```
 

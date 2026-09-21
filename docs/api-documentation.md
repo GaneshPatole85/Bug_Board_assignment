@@ -51,6 +51,48 @@ Authenticates a user and issues a signed JWT.
 }
 ```
 
+### `PATCH /auth/change-password`
+Self-service password update for the currently authenticated user. Invalidates all other existing sessions by updating `passwordChangedAt`.
+- **Auth**: Bearer JWT (any active role)
+- **Body**: `{ currentPassword, newPassword, confirmNewPassword }`
+- **Validation**:
+  - `currentPassword`: required, must match stored bcrypt hash (returns `422` with inline field error if mismatch)
+  - `newPassword`: required, min 8 characters, must differ from current password
+  - `confirmNewPassword`: required, must match `newPassword`
+- **Response**: `200 OK`
+```json
+{
+  "success": true,
+  "message": "Password updated successfully. Please sign in again for security."
+}
+```
+
+### `POST /auth/forgot-password`
+Initiates a password reset workflow. Always returns an identical generic confirmation message to prevent account enumeration.
+- **Auth**: None (Public, rate-limited via `authRateLimiter`)
+- **Body**: `{ email }`
+- **Anti-Enumeration Safeguard**: Only active accounts (`isActive === true`) generate a 32-byte crypto token and receive a reset email; inactive or non-existent accounts receive the exact same 200 response without generating tokens or dispatching emails.
+- **Response**: `200 OK`
+```json
+{
+  "success": true,
+  "message": "If an account with that email exists, a reset link has been sent."
+}
+```
+
+### `POST /auth/reset-password`
+Completes password reset using a single-use crypto token received via email.
+- **Auth**: None (Public, rate-limited via `authRateLimiter`)
+- **Body**: `{ token, newPassword, confirmNewPassword }`
+- **Lifecycle & Security**: The raw token is verified against `passwordResetTokenHash` (SHA-256) and `passwordResetExpires` (30-minute TTL). Upon success, the token is cleared (`null`), preventing replay attacks, and `passwordChangedAt` is updated to invalidate pre-existing sessions.
+- **Response**: `200 OK` on success, or `400 Bad Request` if token is invalid, expired, or already used.
+```json
+{
+  "success": true,
+  "message": "Password reset successful. You can now log in with your new password."
+}
+```
+
 ---
 
 ## 3. Users & Profiles

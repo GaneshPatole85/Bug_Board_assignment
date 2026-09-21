@@ -8,6 +8,8 @@ import IssuesPage from './pages/IssuesPage.jsx';
 import IssueDetailPage from './pages/IssueDetailPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import TeamPage from './pages/TeamPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
@@ -22,6 +24,8 @@ export const App = () => {
         <Route element={<PublicLayout />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
 
         {/* Protected Application Routes (MainLayout with sidebar and top navigation) */}

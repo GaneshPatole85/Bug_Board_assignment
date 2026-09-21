@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
@@ -9,8 +10,9 @@ import { applyApiErrorsToForm } from '../utils/apiErrors.js';
 import './ProfilePage.css';
 
 export const ProfilePage = () => {
-  const { user: authUser, updateUser } = useAuth();
+  const { user: authUser, updateUser, logout } = useAuth();
   const { addToast } = useToast();
+  const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,15 @@ export const ProfilePage = () => {
     avatarUrl: '',
   });
   const [errors, setErrors] = useState({});
+
+  // Change Password state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmNewPassword: '',
+  });
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -126,6 +137,66 @@ export const ProfilePage = () => {
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
+    if (passwordErrors[name]) {
+      setPasswordErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordErrors({});
+
+    const errs = {};
+    if (!passwordData.currentPassword) {
+      errs.currentPassword = 'Current password is required.';
+    }
+    if (!passwordData.newPassword) {
+      errs.newPassword = 'New password is required.';
+    } else if (passwordData.newPassword.length < 8) {
+      errs.newPassword = 'Password must be at least 8 characters long.';
+    }
+    if (!passwordData.confirmNewPassword) {
+      errs.confirmNewPassword = 'Please confirm your new password.';
+    } else if (passwordData.newPassword !== passwordData.confirmNewPassword) {
+      errs.confirmNewPassword = 'New passwords do not match.';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setPasswordErrors(errs);
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      await apiClient.patch('/auth/change-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+        confirmNewPassword: passwordData.confirmNewPassword,
+      });
+
+      addToast('Password updated. Please sign in again for security.', 'success');
+      if (logout) logout();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      const fieldMap = {};
+      const apiErrs = Array.isArray(err?.errors) ? err.errors : [];
+      apiErrs.forEach((item) => {
+        if (item.field) fieldMap[item.field] = item.message;
+      });
+
+      if (Object.keys(fieldMap).length > 0) {
+        setPasswordErrors(fieldMap);
+      } else {
+        addToast(err.message || 'Failed to update password', 'error');
+      }
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -324,6 +395,91 @@ export const ProfilePage = () => {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Change Password Card: Independent block below personal details */}
+        <div className="profile-card profile-details-card" style={{ marginTop: '1.5rem' }} id="change-password-card">
+          <h3 className="section-subtitle">Change Password</h3>
+          <p className="section-note">
+            Update your account password. For security, all other active sessions will be invalidated.
+          </p>
+
+          <form onSubmit={handlePasswordSubmit} className="profile-form" id="change-password-form" noValidate>
+            <div className="form-group">
+              <label htmlFor="change-current-password" className="form-label">
+                Current Password <span className="field-required">*</span>
+              </label>
+              <input
+                type="password"
+                id="change-current-password"
+                name="currentPassword"
+                className={`form-input ${passwordErrors.currentPassword ? 'form-input-error' : ''}`}
+                value={passwordData.currentPassword}
+                onChange={handlePasswordChange}
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+              {passwordErrors.currentPassword && (
+                <span className="form-error-msg" id="current-password-error">
+                  ⚠ {passwordErrors.currentPassword}
+                </span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="change-new-password" className="form-label">
+                New Password <span className="field-required">*</span>
+              </label>
+              <input
+                type="password"
+                id="change-new-password"
+                name="newPassword"
+                className={`form-input ${passwordErrors.newPassword ? 'form-input-error' : ''}`}
+                value={passwordData.newPassword}
+                onChange={handlePasswordChange}
+                placeholder="••••••••"
+                autoComplete="new-password"
+              />
+              {passwordErrors.newPassword && (
+                <span className="form-error-msg" id="new-password-error">
+                  ⚠ {passwordErrors.newPassword}
+                </span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="change-confirm-password" className="form-label">
+                Confirm New Password <span className="field-required">*</span>
+              </label>
+              <input
+                type="password"
+                id="change-confirm-password"
+                name="confirmNewPassword"
+                className={`form-input ${passwordErrors.confirmNewPassword ? 'form-input-error' : ''}`}
+                value={passwordData.confirmNewPassword}
+                onChange={handlePasswordChange}
+                placeholder="••••••••"
+                autoComplete="new-password"
+              />
+              {passwordErrors.confirmNewPassword && (
+                <span className="form-error-msg" id="confirm-password-error">
+                  ⚠ {passwordErrors.confirmNewPassword}
+                </span>
+              )}
+            </div>
+
+            <div className="form-actions-row">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={isChangingPassword}
+                id="update-password-btn"
+              >
+                Update Password
+              </Button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

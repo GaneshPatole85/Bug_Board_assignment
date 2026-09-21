@@ -151,6 +151,8 @@ export const LoginPage = () => {
       </form>
 
       <div className="auth-footer-prompt">
+        <Link to="/forgot-password" id="login-forgot-password-link">Forgot password?</Link>
+        {' · '}
         Don't have an account?{' '}
         <Link to="/register">Create one</Link>
       </div>

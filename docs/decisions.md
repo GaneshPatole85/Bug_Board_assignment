@@ -144,3 +144,56 @@ When adding or managing project members, deactivated users should not be added t
 2. Inactive existing members are visibly flagged with an `(Inactive)` badge.
 3. Historical audit records, comments, and issue authoring by deactivated users remain untouched.
 
+---
+
+## ADR 09: Stateless Session Invalidation via `passwordChangedAt` Timestamp Check
+
+### Context
+When a user updates their password (either via self-service Change Password or Forgot Password reset), all other active sessions and tokens must be immediately revoked to prevent session hijacking. Traditional solutions often introduce stateful token blacklists or Redis distributed caches.
+
+### Decision
+We introduced a `passwordChangedAt` (Date) attribute on the `User` schema.
+1. **Zero New Infrastructure**: Because the `authenticate` middleware was already executing a lightweight per-request DB lookup (`.select('role isActive')` for instant deactivation enforcement), we simply extended that projection to `.select('role isActive passwordChangedAt')`.
+2. **Timestamp Verification**: The middleware compares the JWT's issued-at claim (`decoded.iat`, in seconds) against `Math.floor(userDoc.passwordChangedAt.getTime() / 1000)`. If `iat` predates the password change timestamp, the request is rejected with HTTP `401 Unauthorized` (`"Unauthorized: Session expired, please sign in again"`).
+3. **Backward Compatibility**: Pre-existing sessions where `passwordChangedAt` is `null`/unset are treated as "never changed" and remain valid without forced logout.
+4. **Architectural Alignment**: This design preserves the stateless JWT architecture established in ADR 02 without adding Redis or stateful server-side session tables.
+
+---
+
+## ADR 10: Anti-Enumeration Protections on Forgot Password Endpoint
+
+### Context
+Publicly accessible authentication endpoints can be abused by malicious actors to harvest valid user email addresses (account enumeration) through differential response codes, messages, or timing.
+
+### Decision
+1. **Uniform Response**: `POST /api/v1/auth/forgot-password` unconditionally returns HTTP `200 OK` with an identical generic message: `"If an account with that email exists, a reset link has been sent."` whether the email matches an active user, matches a deactivated user, or does not exist at all.
+2. **Selective Token Generation**: Reset tokens and emails are generated strictly when the email corresponds to an active account (`isActive !== false`). Deactivated accounts and non-existent accounts receive identical success responses without generating tokens or dispatching emails, preventing account status leakage.
+3. **Volume Rate Limiting**: The endpoint is guarded by `authRateLimiter` to prevent brute-force abuse and bulk enumeration attempts.
+
+---
+
+## ADR 11: Cryptographically Secure Single-Use Reset Token Lifecycle with SHA-256 Hashing
+
+### Context
+Password reset links must protect accounts against token interception, database leaks, and replay attacks.
+
+### Decision
+1. **Generation**: Reset tokens are generated using `crypto.randomBytes(32).toString('hex')` (256 bits of entropy).
+2. **Hash-at-Rest**: The raw token is only ever transmitted in the email link (`/reset-password?token=<raw>`). The database stores only the SHA-256 digest (`passwordResetTokenHash`) with `select: false` so it is never exposed in queries.
+3. **Time-Limited Expiry**: Tokens are bounded by a 30-minute validity window (`passwordResetExpires: Date.now() + 30 * 60 * 1000`).
+4. **Single-Use Invalidation**: Upon successful password reset, `passwordResetTokenHash` and `passwordResetExpires` are cleared immediately (`null`), preventing token reuse.
+
+---
+
+## ADR 12: 422 Unprocessable Entity Selection for Change Password Failures
+
+### Context
+In self-service Change Password (`PATCH /api/v1/auth/change-password`), when an authenticated user provides an incorrect current password, the API must return an appropriate HTTP status code.
+
+### Decision
+We explicitly chose **`422 Unprocessable Entity` (ValidationError)** rather than `401 Unauthorized`.
+- In BugBoard's client-side architecture, the centralized Axios response interceptor intercepts all `401 Unauthorized` responses, clears `bugboard_token` from `localStorage`, and triggers a forced logout redirect to `/login`.
+- If a typo in "Current Password" returned `401`, the user would be abruptly logged out of their session.
+- Returning `422` with `{ field: 'currentPassword', message: 'Current password is incorrect' }` provides clean, inline field error feedback without destroying the active session.
+
+
