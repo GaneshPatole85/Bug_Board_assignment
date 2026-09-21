@@ -8,7 +8,8 @@ import { logger } from '../utils/logger.js';
  */
 export const connectDB = async () => {
   try {
-    logger.info({ uri: env.MONGODB_URI }, 'Attempting MongoDB connection...');
+    const sanitizedUri = env.MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@');
+    logger.info({ uri: sanitizedUri }, 'Attempting MongoDB connection...');
 
     mongoose.connection.on('connected', () => {
       logger.info('MongoDB connection established successfully');
@@ -22,9 +23,9 @@ export const connectDB = async () => {
       logger.warn('MongoDB connection lost / disconnected');
     });
 
-    // Server selection timeout set to 5000ms for fast failure in development
+    // Server selection timeout set to 10000ms for resilient remote connections
     const conn = await mongoose.connect(env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
     });
 
     logger.info(

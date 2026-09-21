@@ -114,6 +114,20 @@ npm run seed --prefix server
 npm run dev
 ```
 
+#### Option C: Cloud Database Mode (MongoDB Atlas)
+BugBoard connects seamlessly to MongoDB Atlas with zero application code changes:
+1. In `server/.env`, set `MONGODB_URI` to your Atlas connection string:
+   ```bash
+   MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-host>/bugboard?retryWrites=true&w=majority&appName=Cluster0
+   ```
+   *(Ensure your current IP is allow-listed in the Atlas Network Access panel).*
+2. Start the server and client:
+   ```bash
+   npm run dev
+   ```
+
+> **Security Note**: Always treat Atlas connection strings as confidential secrets. Store them strictly in `server/.env` (which is gitignored) and never commit real credentials to source control.
+
 The frontend will be live at `http://localhost:5173` and the backend at `http://localhost:5000`.
 
 ---
@@ -170,7 +184,7 @@ This inspects all user documents missing an `employeeId`, generates sequential r
 | `NODE_ENV` | Server | Runtime environment | `development` |
 | `PORT` | Server | Backend API port | `5000` |
 | `API_VERSION` | Server | API version route prefix | `v1` |
-| `MONGODB_URI` | Server | MongoDB connection string | `mongodb://127.0.0.1:27017/bugboard` |
+| `MONGODB_URI` | Server | MongoDB connection string (supports local `mongodb://127.0.0.1:27017/bugboard`, Docker `mongodb://mongodb:27017/bugboard`, or Atlas `mongodb+srv://...`) | `mongodb://127.0.0.1:27017/bugboard` |
 | `CLIENT_URL` | Server | Allowed CORS origin | `http://localhost:5173` |
 | `JWT_SECRET` | Server | Secret for signing JWT authentication tokens | `bugboard-jwt-secret-key-32-chars-min` |
 | `JWT_EXPIRES_IN` | Server | Token lifespan | `1d` |

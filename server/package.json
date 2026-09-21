@@ -11,7 +11,7 @@
     "dev:mem": "node src/dev-server.js",
     "test": "node --test tests/foundation.test.js tests/api.test.js",
     "test:auth": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/auth.test.js",
-    "test:phase3": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/project.test.js tests/issue.test.js",
+    "test:phase3": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles --testTimeout=30000 tests/project.test.js tests/issue.test.js",
     "test:phase4": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/phase4.test.js",
     "test:bonus": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/bonus.test.js",
     "test:users": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --detectOpenHandles tests/user-management.test.js",

@@ -196,4 +196,25 @@ We explicitly chose **`422 Unprocessable Entity` (ValidationError)** rather than
 - If a typo in "Current Password" returned `401`, the user would be abruptly logged out of their session.
 - Returning `422` with `{ field: 'currentPassword', message: 'Current password is incorrect' }` provides clean, inline field error feedback without destroying the active session.
 
+---
+
+## ADR 13: Database-Location-Agnostic Architecture (Atlas, Local Native Mongo, Docker)
+
+### Context
+BugBoard needs to run reliably across varied development, testing, CI/CD, and production environments:
+1. Production and staging deployments on managed cloud infrastructure (MongoDB Atlas).
+2. Local development workflows on developer workstations with native `mongod` or ephemeral in-memory MongoDB.
+3. Containerized full-stack deployments via Docker Compose.
+
+### Options Considered
+1. **Environment-Specific Database Connectors**: Separate connection logic, conditional schema plugins, or specialized driver configurations for cloud vs. local deployments.
+2. **Unified Mongoose URI-Driven Architecture**: Rely strictly on standard MongoDB connection strings (`MONGODB_URI`) where protocol schemes (`mongodb://` vs. `mongodb+srv://`), replica set discovery, TLS/SSL encryption, write concerns (`w=majority`), and retry writes (`retryWrites=true`) are handled transparently by the official MongoDB driver and Mongoose without code branching.
+
+### Decision
+We adopted **Unified URI-Driven Architecture via Mongoose**.
+- BugBoard connects interchangeably to MongoDB Atlas, local native MongoDB, or Dockerized MongoDB via a single environment variable: `MONGODB_URI`.
+- **Zero Application Code Changes**: Migrating from local development to MongoDB Atlas required zero changes to business logic, controllers, or models.
+- **TLS/SSL & SRV Handling**: Atlas SRV records (`mongodb+srv://`) automatically resolve replica set topology and enforce TLS without manual certificate paths or code-level TLS flags.
+- **Graceful Shutdown**: The existing `mongoose.connection.close()` handlers on `SIGINT` and `SIGTERM` operate cleanly regardless of whether the target database is a local process or a remote cloud cluster.
+
 

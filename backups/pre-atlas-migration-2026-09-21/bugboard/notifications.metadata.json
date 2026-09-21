@@ -1,0 +1,47 @@
+{
+  "options": {},
+  "indexes": [
+    {
+      "v": 2,
+      "key": {
+        "_id": 1
+      },
+      "name": "_id_"
+    },
+    {
+      "v": 2,
+      "key": {
+        "recipient": 1
+      },
+      "name": "recipient_1",
+      "background": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "issue": 1
+      },
+      "name": "issue_1",
+      "background": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "read": 1
+      },
+      "name": "read_1",
+      "background": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "recipient": 1,
+        "read": 1,
+        "createdAt": -1
+      },
+      "name": "recipient_1_read_1_createdAt_-1",
+      "background": true
+    }
+  ],
+  "collectionName": "notifications"
+}
