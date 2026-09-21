@@ -507,7 +507,6 @@ const DEFAULT_DEPARTMENTS_BY_ROLE = {
             >
               <option value="Developer">Developer</option>
               <option value="Tester">Tester</option>
-              <option value="Admin">Admin</option>
             </select>
             {editErrors.role && (
               <span className="form-error-msg">{editErrors.role}</span>

@@ -3,9 +3,11 @@ import { Project } from '../models/Project.js';
 import { User } from '../models/User.js';
 import { Comment } from '../models/Comment.js';
 import { Activity } from '../models/Activity.js';
+import { Attachment } from '../models/Attachment.js';
 import { ROLES } from '../constants/roles.js';
 import { workflowService } from './workflow.service.js';
 import { notificationService } from './notification.service.js';
+import { storageService } from './storage.service.js';
 import {
   BadRequestError,
   ValidationError,
@@ -396,9 +398,57 @@ class IssueService {
     // Check access first
     await this.getIssueById(issueId, user);
 
-    return Activity.find({ issue: issueId })
+    const activities = await Activity.find({ issue: issueId })
       .sort({ createdAt: -1 })
-      .populate('actor', 'name email role');
+      .populate('actor', 'name email role')
+      .lean();
+
+    // Extract all candidate user ObjectIds from assignee changes
+    const userIds = new Set();
+    activities.forEach((act) => {
+      if (act.field === 'assignee') {
+        if (act.oldValue && /^[0-9a-fA-F]{24}$/.test(String(act.oldValue))) {
+          userIds.add(String(act.oldValue));
+        }
+        if (act.newValue && /^[0-9a-fA-F]{24}$/.test(String(act.newValue))) {
+          userIds.add(String(act.newValue));
+        }
+      }
+    });
+
+    if (userIds.size > 0) {
+      const users = await User.find({ _id: { $in: Array.from(userIds) } })
+        .select('name email')
+        .lean();
+      const userMap = new Map();
+      users.forEach((u) => {
+        userMap.set(u._id.toString(), u.name || u.email);
+      });
+
+      activities.forEach((act) => {
+        if (act.field === 'assignee') {
+          if (act.oldValue && userMap.has(String(act.oldValue))) {
+            act.oldValue = userMap.get(String(act.oldValue));
+          } else if (!act.oldValue) {
+            act.oldValue = 'Unassigned';
+          }
+          if (act.newValue && userMap.has(String(act.newValue))) {
+            act.newValue = userMap.get(String(act.newValue));
+          } else if (!act.newValue) {
+            act.newValue = 'Unassigned';
+          }
+        }
+      });
+    } else {
+      activities.forEach((act) => {
+        if (act.field === 'assignee') {
+          if (!act.oldValue) act.oldValue = 'Unassigned';
+          if (!act.newValue) act.newValue = 'Unassigned';
+        }
+      });
+    }
+
+    return activities;
   }
 
   /**
@@ -417,7 +467,14 @@ class IssueService {
       throw new ForbiddenError('Forbidden: Only an Admin or the issue Reporter can delete this issue');
     }
 
-    // Cascade delete comments and activities
+    // Cascade delete attachments, storage files, comments, and activities
+    const attachments = await Attachment.find({ issue: issueId });
+    for (const att of attachments) {
+      if (att.storageKey) {
+        await storageService.deleteFile(att.storageKey);
+      }
+    }
+    await Attachment.deleteMany({ issue: issueId });
     await Comment.deleteMany({ issue: issueId });
     await Activity.deleteMany({ issue: issueId });
 

@@ -208,7 +208,7 @@ export class AuthService {
       passwordResetExpires: { $gt: new Date() },
     }).select('+passwordHash');
 
-    if (!user) {
+    if (!user || user.isActive === false) {
       throw new BadRequestError('This reset link is invalid or has expired', [
         { field: 'token', message: 'This reset link is invalid or has expired' },
       ]);

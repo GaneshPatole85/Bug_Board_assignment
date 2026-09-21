@@ -217,4 +217,36 @@ We adopted **Unified URI-Driven Architecture via Mongoose**.
 - **TLS/SSL & SRV Handling**: Atlas SRV records (`mongodb+srv://`) automatically resolve replica set topology and enforce TLS without manual certificate paths or code-level TLS flags.
 - **Graceful Shutdown**: The existing `mongoose.connection.close()` handlers on `SIGINT` and `SIGTERM` operate cleanly regardless of whether the target database is a local process or a remote cloud cluster.
 
+---
+
+## ADR 14: Sole Primary Administrator Architecture & Non-Escalation Rule
+
+### Context
+In organizational environments where a designated administrator manages developer and tester rosters, allowing arbitrary role modification to grant the `Admin` role creates privilege escalation risks, breaks role-prefixed employee identifier semantics (`DEV-xxxx` vs. `ADM-xxxx`), and could lead to unauthorized administrative takeovers.
+
+### Decision
+Both API validation and service layers enforce that team members can only be reassigned between `Developer` and `Tester`:
+1. **API Validation**: `PATCH /api/v1/users/:userId` strictly validates `role` against `['Developer', 'Tester']`. Attempting to submit `role: 'Admin'` is rejected with HTTP `422 Unprocessable Entity` (`"Role can only be changed between Developer and Tester. Promoting users to Admin is not permitted."`).
+2. **Service Defense-in-Depth**: `userService.updateUserAsAdmin` throws `ForbiddenError` (HTTP 403) if `role === ROLES.ADMIN`.
+3. **Frontend UI**: The "Edit Team Member" modal role dropdown strictly presents `Developer` and `Tester` options, eliminating ambiguous role assignments.
+
+---
+
+## ADR 15: Cascading Resource Cleanup Across Deletions (Issues & Projects)
+
+### Context
+Deleting parent records (issues or projects) without cascading child assets causes orphaned database documents and unbounded disk/object-storage accumulation. In prior audit passes (B51), deleting an issue cleaned comments and activities, but left orphaned `Attachment` records and physical binary files indefinitely.
+
+### Decision
+We implemented comprehensive cascading deletion handlers:
+1. **Issue Deletion (`issue.service.js:deleteIssue`)**:
+   - Deletes all `Comment` documents referencing `issueId`.
+   - Deletes all `Activity` documents referencing `issueId`.
+   - Queries all `Attachment` documents referencing `issueId`, calls `storageService.deleteFile(attachment.storageKey)` to purge the physical file, and executes `Attachment.deleteMany({ issue: issueId })`.
+2. **Project Deletion (`project.service.js:deleteProject`)**:
+   - Queries all child issues in the project.
+   - For every issue, cascades deletion of comments, activities, and attachment files from both storage and database.
+   - Deletes all issue documents, then deletes the project document.
+
+
 

@@ -1,5 +1,5 @@
 import { body, query } from 'express-validator';
-import { ROLES_LIST } from '../constants/roles.js';
+import { ROLES, ROLES_LIST } from '../constants/roles.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
 
 /**
@@ -44,14 +44,14 @@ export const validateSelfProfileUpdate = [
     .withMessage('Please provide a valid email address')
     .normalizeEmail({ gmail_dots: false }),
   body('phone')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Phone must be a string')
     .trim()
     .isLength({ max: 20 })
     .withMessage('Phone cannot exceed 20 characters'),
   body('avatarUrl')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .matches(/^https?:\/\/.+$/)
     .withMessage('Avatar URL must be a valid HTTP or HTTPS URL'),
@@ -75,8 +75,8 @@ export const validateAdminUserUpdate = [
     .withMessage('Designation cannot exceed 100 characters'),
   body('role')
     .optional()
-    .isIn(ROLES_LIST)
-    .withMessage(`Role must be one of: ${ROLES_LIST.join(', ')}`),
+    .isIn([ROLES.DEVELOPER, ROLES.TESTER])
+    .withMessage('Role can only be changed between Developer and Tester. Promoting users to Admin is not permitted.'),
   body('isActive')
     .optional()
     .isBoolean()

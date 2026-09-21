@@ -3,7 +3,9 @@ import { User } from '../models/User.js';
 import { Issue } from '../models/Issue.js';
 import { Comment } from '../models/Comment.js';
 import { Activity } from '../models/Activity.js';
+import { Attachment } from '../models/Attachment.js';
 import { ROLES } from '../constants/roles.js';
+import { storageService } from './storage.service.js';
 import {
   ConflictError,
   ValidationError,
@@ -207,6 +209,13 @@ class ProjectService {
     const issueIds = issues.map((i) => i._id);
 
     if (issueIds.length > 0) {
+      const attachments = await Attachment.find({ issue: { $in: issueIds } });
+      for (const att of attachments) {
+        if (att.storageKey) {
+          await storageService.deleteFile(att.storageKey);
+        }
+      }
+      await Attachment.deleteMany({ issue: { $in: issueIds } });
       await Comment.deleteMany({ issue: { $in: issueIds } });
       await Activity.deleteMany({ issue: { $in: issueIds } });
       await Issue.deleteMany({ project: projectId });

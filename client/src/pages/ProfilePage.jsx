@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client.js';
@@ -6,7 +5,6 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { RoleBadge } from '../components/ui/Badge.jsx';
-import { applyApiErrorsToForm } from '../utils/apiErrors.js';
 import './ProfilePage.css';
 
 export const ProfilePage = () => {
@@ -24,6 +22,7 @@ export const ProfilePage = () => {
     avatarUrl: '',
   });
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Change Password state
   const [passwordData, setPasswordData] = useState({
@@ -32,6 +31,7 @@ export const ProfilePage = () => {
     confirmNewPassword: '',
   });
   const [passwordErrors, setPasswordErrors] = useState({});
+  const [passwordTouched, setPasswordTouched] = useState({});
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -39,7 +39,7 @@ export const ProfilePage = () => {
 
   // Real-time password strength calculation
   const getPasswordStrength = (pwd) => {
-    if (!pwd) return { score: 0, label: '', color: '' };
+    if (!pwd) return { score: 0, label: '', color: '', percent: 0 };
     let score = 0;
     if (pwd.length >= 8) score++;
     if (pwd.length >= 12) score++;
@@ -87,69 +87,176 @@ export const ProfilePage = () => {
     };
   }, [addToast]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
+  // Validation rule engine for personal profile fields
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'name':
+        if (!value || !value.trim()) {
+          return 'Full name is required.';
+        }
+        if (value.trim().length < 2) {
+          return 'Name must be at least 2 characters.';
+        }
+        if (value.trim().length > 50) {
+          return 'Name cannot exceed 50 characters.';
+        }
+        return '';
+
+      case 'email':
+        if (!value || !value.trim()) {
+          return 'Email address is required.';
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+          return 'Please enter a valid email address (e.g. name@company.com).';
+        }
+        if (value.trim().length > 100) {
+          return 'Email address cannot exceed 100 characters.';
+        }
+        return '';
+
+      case 'phone':
+        if (value && value.trim()) {
+          const trimmed = value.trim();
+          if (trimmed.length > 20) {
+            return 'Phone number cannot exceed 20 characters.';
+          }
+          if (!/^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/.test(trimmed)) {
+            return 'Please enter a valid phone number format.';
+          }
+          const digitsOnly = trimmed.replace(/\D/g, '');
+          if (digitsOnly.length < 7) {
+            return 'Phone number must contain at least 7 digits.';
+          }
+        }
+        return '';
+
+      case 'avatarUrl':
+        if (value && value.trim()) {
+          const trimmed = value.trim();
+          if (!/^https?:\/\/.+$/i.test(trimmed)) {
+            return 'Avatar URL must start with http:// or https://';
+          }
+          if (/^(javascript|data|file|ftp):/i.test(trimmed)) {
+            return 'Dangerous protocol schemes are not allowed.';
+          }
+        }
+        return '';
+
+      default:
+        return '';
     }
   };
 
-  const validate = () => {
+  // Validation rule engine for password change fields
+  const validatePasswordField = (name, value, allValues) => {
+    switch (name) {
+      case 'currentPassword':
+        if (!value) {
+          return 'Current password is required.';
+        }
+        return '';
+
+      case 'newPassword':
+        if (!value) {
+          return 'New password is required.';
+        }
+        if (value.length < 8) {
+          return 'Password must be at least 8 characters long.';
+        }
+        if (allValues.currentPassword && value === allValues.currentPassword) {
+          return 'New password must be different from current password.';
+        }
+        return '';
+
+      case 'confirmNewPassword':
+        if (!value) {
+          return 'Please confirm your new password.';
+        }
+        if (allValues.newPassword && value !== allValues.newPassword) {
+          return 'Passwords do not match.';
+        }
+        return '';
+
+      default:
+        return '';
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Real-time validation if the field was previously touched or has an error
+    if (touched[name] || errors[name]) {
+      const fieldError = validateField(name, value);
+      setErrors((prev) => ({ ...prev, [name]: fieldError }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const fieldError = validateField(name, value);
+    setErrors((prev) => ({ ...prev, [name]: fieldError }));
+  };
+
+  const validateAllProfile = () => {
     const newErrors = {};
-    if (!formData.name || formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    } else if (formData.name.trim().length > 50) {
-      newErrors.name = 'Name cannot exceed 50 characters';
-    }
-
-    if (!formData.email || !formData.email.trim()) {
-      newErrors.email = 'Email address is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = 'Please enter a valid email address (e.g. name@company.com).';
-    }
-
-    if (formData.phone && formData.phone.length > 20) {
-      newErrors.phone = 'Phone number cannot exceed 20 characters';
-    }
-
-    if (formData.avatarUrl && !/^https?:\/\/.+$/.test(formData.avatarUrl.trim())) {
-      newErrors.avatarUrl = 'Avatar URL must start with http:// or https://';
-    }
-
+    Object.keys(formData).forEach((field) => {
+      const err = validateField(field, formData[field]);
+      if (err) newErrors[field] = err;
+    });
     setErrors(newErrors);
+    setTouched({
+      name: true,
+      email: true,
+      phone: true,
+      avatarUrl: true,
+    });
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validateAllProfile()) {
+      addToast('Please correct the errors in the profile form before saving.', 'error');
+      return;
+    }
 
     try {
       setIsSaving(true);
       const payload = {
         name: formData.name.trim(),
         email: formData.email.trim(),
-        phone: formData.phone.trim() || undefined,
-        avatarUrl: formData.avatarUrl.trim() || undefined,
+        phone: formData.phone.trim() || null,
+        avatarUrl: formData.avatarUrl.trim() || null,
       };
-      // Only send email if it changed (avoids a no-op conflict check)
-      if (payload.email === profile?.email) delete payload.email;
-      const res = await apiClient.patch('/users/me', payload);
 
+      // Only send email if it changed (avoids no-op uniqueness conflict check)
+      if (payload.email === profile?.email) {
+        delete payload.email;
+      }
+
+      const res = await apiClient.patch('/users/me', payload);
       const updatedUser = res.data?.user || res.data;
       setProfile(updatedUser);
-      // Keep formData.email in sync with saved value
-      setFormData((prev) => ({ ...prev, email: updatedUser.email || prev.email }))
+      setFormData((prev) => ({
+        ...prev,
+        email: updatedUser.email || prev.email,
+      }));
+
       if (updateUser) {
         updateUser(updatedUser);
       }
       addToast('Profile updated successfully', 'success');
     } catch (err) {
-      // Map backend field errors to inline form errors; fall back to toast for general errors
+      // Map backend field errors (e.g. 409 Conflict, 422 Unprocessable Entity) to inline inputs
       const fieldMap = {};
       const apiErrs = Array.isArray(err?.errors) ? err.errors : [];
-      apiErrs.forEach((e) => { if (e.field) fieldMap[e.field] = e.message; });
+      apiErrs.forEach((e) => {
+        if (e.field) fieldMap[e.field] = e.message;
+      });
+
       if (Object.keys(fieldMap).length > 0) {
         setErrors((prev) => ({ ...prev, ...fieldMap }));
       } else {
@@ -162,33 +269,48 @@ export const ProfilePage = () => {
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
-    setPasswordData((prev) => ({ ...prev, [name]: value }));
-    if (passwordErrors[name]) {
-      setPasswordErrors((prev) => ({ ...prev, [name]: '' }));
+    const updated = { ...passwordData, [name]: value };
+    setPasswordData(updated);
+
+    // If field is touched, validate in real time
+    if (passwordTouched[name] || passwordErrors[name]) {
+      const err = validatePasswordField(name, value, updated);
+      setPasswordErrors((prev) => ({ ...prev, [name]: err }));
     }
+
+    // Also re-validate confirmNewPassword if newPassword changes
+    if (name === 'newPassword' && passwordTouched.confirmNewPassword) {
+      const matchErr = validatePasswordField('confirmNewPassword', updated.confirmNewPassword, updated);
+      setPasswordErrors((prev) => ({ ...prev, confirmNewPassword: matchErr }));
+    }
+  };
+
+  const handlePasswordBlur = (e) => {
+    const { name, value } = e.target;
+    setPasswordTouched((prev) => ({ ...prev, [name]: true }));
+    const err = validatePasswordField(name, value, passwordData);
+    setPasswordErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
+  const validateAllPassword = () => {
+    const newErrs = {};
+    Object.keys(passwordData).forEach((field) => {
+      const err = validatePasswordField(field, passwordData[field], passwordData);
+      if (err) newErrs[field] = err;
+    });
+    setPasswordErrors(newErrs);
+    setPasswordTouched({
+      currentPassword: true,
+      newPassword: true,
+      confirmNewPassword: true,
+    });
+    return Object.keys(newErrs).length === 0;
   };
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    setPasswordErrors({});
-
-    const errs = {};
-    if (!passwordData.currentPassword) {
-      errs.currentPassword = 'Current password is required.';
-    }
-    if (!passwordData.newPassword) {
-      errs.newPassword = 'New password is required.';
-    } else if (passwordData.newPassword.length < 8) {
-      errs.newPassword = 'Password must be at least 8 characters long.';
-    }
-    if (!passwordData.confirmNewPassword) {
-      errs.confirmNewPassword = 'Please confirm your new password.';
-    } else if (passwordData.newPassword !== passwordData.confirmNewPassword) {
-      errs.confirmNewPassword = 'New passwords do not match.';
-    }
-
-    if (Object.keys(errs).length > 0) {
-      setPasswordErrors(errs);
+    if (!validateAllPassword()) {
+      addToast('Please fix password errors before submitting.', 'error');
       return;
     }
 
@@ -230,12 +352,17 @@ export const ProfilePage = () => {
 
   const initials = profile?.name
     ? profile.name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase()
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
     : 'U';
+
+  const passwordsMatch =
+    passwordData.newPassword &&
+    passwordData.confirmNewPassword &&
+    passwordData.newPassword === passwordData.confirmNewPassword;
 
   return (
     <div className="page-container" id="profile-page">
@@ -260,7 +387,7 @@ export const ProfilePage = () => {
                   className="profile-avatar-img"
                   onError={(e) => {
                     e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
+                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                   }}
                 />
               ) : null}
@@ -272,14 +399,15 @@ export const ProfilePage = () => {
               </div>
             </div>
 
-            <h2 className="profile-name-title">{profile?.name}</h2>
+            <h2 className="profile-name-title">{formData.name || profile?.name}</h2>
             <span className="profile-email-text">{formData.email || profile?.email}</span>
 
             <div className="profile-role-badge-row">
               <RoleBadge role={profile?.role} />
               <span
-                className={`profile-status-badge ${profile?.isActive !== false ? 'status-active' : 'status-inactive'
-                  }`}
+                className={`profile-status-badge ${
+                  profile?.isActive !== false ? 'status-active' : 'status-inactive'
+                }`}
               >
                 {profile?.isActive !== false ? '● Active' : '● Inactive'}
               </span>
@@ -312,16 +440,25 @@ export const ProfilePage = () => {
               <div>
                 <h3 className="section-subtitle">Edit Personal Information</h3>
                 <p className="section-note">
-                  These fields are self-editable by any authenticated team member.
+                  These fields are self-editable with real-time input verification.
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="profile-form" id="profile-form">
+            <form onSubmit={handleSubmit} className="profile-form" id="profile-form" noValidate>
               <div className="form-group">
-                <label htmlFor="profile-name" className="form-label">
-                  Full Name <span className="field-required">*</span>
-                </label>
+                <div className="form-label-row">
+                  <label htmlFor="profile-name" className="form-label">
+                    Full Name <span className="field-required">*</span>
+                  </label>
+                  <span
+                    className={`form-char-count ${
+                      formData.name.length >= 45 ? 'limit-near' : ''
+                    } ${formData.name.length >= 50 ? 'limit-reached' : ''}`}
+                  >
+                    {formData.name.length}/50
+                  </span>
+                </div>
                 <input
                   type="text"
                   id="profile-name"
@@ -329,10 +466,17 @@ export const ProfilePage = () => {
                   className={`form-input ${errors.name ? 'form-input-error' : ''}`}
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="Your full name"
+                  onBlur={handleBlur}
+                  placeholder="Your full name (min 2 characters)"
                   autoComplete="name"
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? 'profile-name-error' : undefined}
                 />
-                {errors.name && <span className="form-error-msg">{errors.name}</span>}
+                {errors.name && (
+                  <span className="form-error-msg" id="profile-name-error" role="alert">
+                    ⚠ {errors.name}
+                  </span>
+                )}
               </div>
 
               <div className="form-group">
@@ -346,10 +490,17 @@ export const ProfilePage = () => {
                   className={`form-input ${errors.email ? 'form-input-error' : ''}`}
                   value={formData.email}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   placeholder="name@company.com"
                   autoComplete="email"
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'profile-email-error' : undefined}
                 />
-                {errors.email && <span className="form-error-msg">{errors.email}</span>}
+                {errors.email && (
+                  <span className="form-error-msg" id="profile-email-error" role="alert">
+                    ⚠ {errors.email}
+                  </span>
+                )}
               </div>
 
               <div className="form-row-2col">
@@ -358,16 +509,23 @@ export const ProfilePage = () => {
                     Phone Number <span className="field-optional">(optional)</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     id="profile-phone"
                     name="phone"
                     className={`form-input ${errors.phone ? 'form-input-error' : ''}`}
                     value={formData.phone}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="+1 (555) 000-0000"
                     autoComplete="tel"
+                    aria-invalid={Boolean(errors.phone)}
+                    aria-describedby={errors.phone ? 'profile-phone-error' : undefined}
                   />
-                  {errors.phone && <span className="form-error-msg">{errors.phone}</span>}
+                  {errors.phone && (
+                    <span className="form-error-msg" id="profile-phone-error" role="alert">
+                      ⚠ {errors.phone}
+                    </span>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -381,10 +539,15 @@ export const ProfilePage = () => {
                     className={`form-input ${errors.avatarUrl ? 'form-input-error' : ''}`}
                     value={formData.avatarUrl}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="https://example.com/avatar.jpg"
+                    aria-invalid={Boolean(errors.avatarUrl)}
+                    aria-describedby={errors.avatarUrl ? 'profile-avatar-error' : undefined}
                   />
                   {errors.avatarUrl && (
-                    <span className="form-error-msg">{errors.avatarUrl}</span>
+                    <span className="form-error-msg" id="profile-avatar-error" role="alert">
+                      ⚠ {errors.avatarUrl}
+                    </span>
                   )}
                 </div>
               </div>
@@ -419,7 +582,7 @@ export const ProfilePage = () => {
               <div className="readonly-field">
                 <span className="readonly-label">Employee ID</span>
                 <span className="readonly-value font-mono">
-                  {profile?.employeeId || 'Assigned automatically when your account was created'}
+                  {profile?.employeeId || 'Assigned automatically upon account creation'}
                 </span>
               </div>
 
@@ -444,7 +607,7 @@ export const ProfilePage = () => {
               <div>
                 <h3 className="section-subtitle" style={{ margin: 0 }}>Change Password</h3>
                 <p className="section-note" style={{ margin: 0 }}>
-                  Update your account password to ensure strong security.
+                  Update your account password with instant strength analysis.
                 </p>
               </div>
             </div>
@@ -452,7 +615,7 @@ export const ProfilePage = () => {
             <div className="security-alert-box">
               <span className="security-alert-icon">ℹ️</span>
               <div className="security-alert-content">
-                <strong>Session Invalidation Notice:</strong> For your security, changing your password will immediately invalidate all other active sessions and access tokens.
+                <strong>Session Invalidation Notice:</strong> Changing your password will immediately terminate all other active browser sessions for this account.
               </div>
             </div>
 
@@ -469,8 +632,11 @@ export const ProfilePage = () => {
                     className={`form-input ${passwordErrors.currentPassword ? 'form-input-error' : ''}`}
                     value={passwordData.currentPassword}
                     onChange={handlePasswordChange}
+                    onBlur={handlePasswordBlur}
                     placeholder="Enter your current password"
                     autoComplete="current-password"
+                    aria-invalid={Boolean(passwordErrors.currentPassword)}
+                    aria-describedby={passwordErrors.currentPassword ? 'current-password-error' : undefined}
                   />
                   <button
                     type="button"
@@ -486,7 +652,7 @@ export const ProfilePage = () => {
                   </button>
                 </div>
                 {passwordErrors.currentPassword && (
-                  <span className="form-error-msg" id="current-password-error">
+                  <span className="form-error-msg" id="current-password-error" role="alert">
                     ⚠ {passwordErrors.currentPassword}
                   </span>
                 )}
@@ -505,8 +671,11 @@ export const ProfilePage = () => {
                       className={`form-input ${passwordErrors.newPassword ? 'form-input-error' : ''}`}
                       value={passwordData.newPassword}
                       onChange={handlePasswordChange}
+                      onBlur={handlePasswordBlur}
                       placeholder="At least 8 characters"
                       autoComplete="new-password"
+                      aria-invalid={Boolean(passwordErrors.newPassword)}
+                      aria-describedby={passwordErrors.newPassword ? 'new-password-error' : undefined}
                     />
                     <button
                       type="button"
@@ -522,7 +691,7 @@ export const ProfilePage = () => {
                     </button>
                   </div>
                   {passwordErrors.newPassword && (
-                    <span className="form-error-msg" id="new-password-error">
+                    <span className="form-error-msg" id="new-password-error" role="alert">
                       ⚠ {passwordErrors.newPassword}
                     </span>
                   )}
@@ -555,11 +724,16 @@ export const ProfilePage = () => {
                       type={showConfirmPassword ? 'text' : 'password'}
                       id="change-confirm-password"
                       name="confirmNewPassword"
-                      className={`form-input ${passwordErrors.confirmNewPassword ? 'form-input-error' : ''}`}
+                      className={`form-input ${
+                        passwordErrors.confirmNewPassword ? 'form-input-error' : ''
+                      }`}
                       value={passwordData.confirmNewPassword}
                       onChange={handlePasswordChange}
+                      onBlur={handlePasswordBlur}
                       placeholder="Repeat new password"
                       autoComplete="new-password"
+                      aria-invalid={Boolean(passwordErrors.confirmNewPassword)}
+                      aria-describedby={passwordErrors.confirmNewPassword ? 'confirm-password-error' : undefined}
                     />
                     <button
                       type="button"
@@ -575,24 +749,16 @@ export const ProfilePage = () => {
                     </button>
                   </div>
                   {passwordErrors.confirmNewPassword && (
-                    <span className="form-error-msg" id="confirm-password-error">
+                    <span className="form-error-msg" id="confirm-password-error" role="alert">
                       ⚠ {passwordErrors.confirmNewPassword}
                     </span>
                   )}
-                  {passwordData.newPassword && passwordData.confirmNewPassword && passwordData.newPassword === passwordData.confirmNewPassword && (
-                    <span className="form-success-hint">✓ Passwords match</span>
+                  {passwordsMatch && (
+                    <span className="form-success-hint" id="password-match-hint">
+                      ✓ Passwords match
+                    </span>
                   )}
                 </div>
-              </div>
-
-              {/* Password Requirement Chips */}
-              <div className="password-rules-row">
-                <span className={`rule-chip ${passwordData.newPassword.length >= 8 ? 'rule-met' : ''}`}>
-                  {passwordData.newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
-                </span>
-                <span className={`rule-chip ${passwordData.newPassword && passwordData.newPassword === passwordData.confirmNewPassword ? 'rule-met' : ''}`}>
-                  {passwordData.newPassword && passwordData.newPassword === passwordData.confirmNewPassword ? '✓' : '○'} Passwords match
-                </span>
               </div>
 
               <div className="form-actions-row">

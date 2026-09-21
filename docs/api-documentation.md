@@ -349,3 +349,81 @@ Provides rich live engineering console metrics including status breakdown, sever
 - **Auth**: Bearer JWT (scoped to accessible projects)
 - **Response**: `200 OK`
 
+---
+
+## 8. Attachments (File Upload & Download)
+### `POST /issues/:issueId/attachments`
+Uploads a binary file attachment to an issue. Physical file is written to storage before creating the database document.
+- **Auth**: Bearer JWT (must be a member of the project or Admin)
+- **Content-Type**: `multipart/form-data`
+- **Field**: `file` (Max 5MB; supported formats: PNG, JPEG, GIF, PDF, TXT, LOG)
+- **Responses**:
+  - `201 Created` with attachment metadata
+  - `403 Forbidden` if not a project member
+  - `422 Unprocessable Entity` if file exceeds 5MB or invalid MIME type
+
+### `GET /issues/:issueId/attachments`
+Lists all attachments for an issue.
+- **Auth**: Bearer JWT (requires project access)
+- **Response**: `200 OK` Array of attachment metadata
+
+### `GET /attachments/:attachmentId/download`
+Streams the binary file attachment to the client.
+- **Auth**: Bearer JWT (requires project access at download time)
+- **Responses**:
+  - `200 OK` Streaming binary download with `Content-Disposition: attachment; filename="..."`
+  - `403 Forbidden` if user is not currently an active member of the issue's project
+
+---
+
+## 9. Notifications
+### `GET /notifications`
+Lists notifications for the currently authenticated user with unread notifications sorted first.
+- **Auth**: Bearer JWT
+- **Query Parameters**:
+  - `limit`: Integer (default 20, max 100)
+- **Response**: `200 OK` with unread count and notification array
+
+### `PATCH /notifications/:notificationId/read`
+Marks a specific notification as read. Cross-user modification is strictly prohibited.
+- **Auth**: Bearer JWT (only the recipient can mark as read; non-recipients get 404)
+- **Response**: `200 OK`
+
+### `PATCH /notifications/read-all`
+Marks all unread notifications for the currently authenticated user as read.
+- **Auth**: Bearer JWT
+- **Response**: `200 OK`
+
+---
+
+## 10. Deletions & Cascading Cleanup
+### `DELETE /issues/:issueId`
+Deletes an issue and cascades cleanup.
+- **Auth**: Bearer JWT (`Admin` or the original `reporter`)
+- **Cascade Behavior**: Automatically deletes all child `Comment` documents, child `Activity` records, queries child `Attachment` records, deletes physical files from storage, and deletes the `Attachment` documents from MongoDB.
+- **Responses**:
+  - `200 OK` `{ "success": true, "message": "Issue deleted successfully" }`
+  - `403 Forbidden` if caller is not the reporter or an Admin
+  - `404 Not Found` if issue does not exist
+
+### `DELETE /projects/:projectId`
+Deletes a project and all associated resources.
+- **Auth**: Bearer JWT (`Admin` role only)
+- **Cascade Behavior**: Cascades across all issues in the project, deleting all comments, activities, attachments, physical files, and issue documents.
+- **Responses**:
+  - `200 OK` `{ "success": true, "message": "Project and all associated issues deleted successfully" }`
+  - `403 Forbidden` if non-admin attempts deletion
+
+---
+
+## 11. Postman Collection
+A complete, runnable Postman Collection v2.1.0 is available at:
+📁 **[`docs/postmancollection.json`](file:///d:/Bug_Board_assignment/docs/postmancollection.json)**
+
+### Features:
+- Pre-configured with base URL `{{baseUrl}}` (`http://localhost:5000/api/v1`).
+- Automatic token extraction: logging in as Admin, Developer, or Tester automatically sets `{{token}}` for subsequent requests.
+- Full coverage of all 10 endpoint categories with sample bodies and descriptions.
+- Ready for one-click import into Postman, Insomnia, or Bruno.
+
+

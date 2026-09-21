@@ -120,6 +120,11 @@ class UserService {
     }
 
     if (data.role !== undefined) {
+      if (data.role === ROLES.ADMIN) {
+        throw new ForbiddenError(
+          'Promoting users to Admin is not permitted. Only the primary administrator holds administrative access.'
+        );
+      }
       user.role = data.role;
     }
 

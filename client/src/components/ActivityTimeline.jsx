@@ -5,7 +5,7 @@ import './ActivityTimeline.css';
  * Render sentence-style human-readable activity descriptions:
  * e.g., "Priya changed priority: Medium → High"
  */
-function renderActivitySentence(act) {
+function renderActivitySentence(act, usersMap = {}) {
   const actorName = act.actor?.name || 'A user';
 
   if (act.action === 'CREATED') {
@@ -61,19 +61,37 @@ function renderActivitySentence(act) {
   }
 
   if (act.field === 'assignee') {
-    if (!act.newValue) {
+    const resolveAssigneeName = (val) => {
+      if (!val || val === 'null' || val === 'undefined') return 'Unassigned';
+      if (typeof val === 'object') {
+        return val.name || val.email || val._id?.toString() || 'User';
+      }
+      const strVal = String(val);
+      if (usersMap && typeof usersMap === 'object' && usersMap[strVal]) {
+        return usersMap[strVal];
+      }
+      return strVal;
+    };
+
+    const oldDisplay = resolveAssigneeName(act.oldValue);
+    const newDisplay = resolveAssigneeName(act.newValue);
+
+    if (!act.newValue || newDisplay === 'Unassigned') {
       return (
         <span>
           <strong>{actorName}</strong> unassigned this issue
+          {oldDisplay && oldDisplay !== 'Unassigned' && (
+            <> (was <span className="activity-val-old">{oldDisplay}</span>)</>
+          )}
         </span>
       );
     }
     return (
       <span>
         <strong>{actorName}</strong> reassigned this issue:{' '}
-        <span className="activity-val-old">{act.oldValue || 'Unassigned'}</span>
+        <span className="activity-val-old">{oldDisplay}</span>
         <span className="activity-arrow"> → </span>
-        <span className="activity-val-new">{act.newValue}</span>
+        <span className="activity-val-new">{newDisplay}</span>
       </span>
     );
   }
@@ -85,7 +103,7 @@ function renderActivitySentence(act) {
   );
 }
 
-export const ActivityTimeline = ({ activities = [], loading = false }) => {
+export const ActivityTimeline = ({ activities = [], loading = false, usersMap = {} }) => {
   if (loading) {
     return (
       <div className="activity-loading" id="activity-loading">
@@ -121,7 +139,7 @@ export const ActivityTimeline = ({ activities = [], loading = false }) => {
                 <span className="timeline-role-badge">{actorRole}</span>
                 <span className="timeline-time timestamp-mono">{timestamp}</span>
               </div>
-              <p className="timeline-detail">{renderActivitySentence(act)}</p>
+              <p className="timeline-detail">{renderActivitySentence(act, usersMap)}</p>
             </div>
           </div>
         );

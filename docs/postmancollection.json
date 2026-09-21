@@ -1,0 +1,935 @@
+{
+  "info": {
+    "_postman_id": "7f8b9e12-4c3a-4b99-923f-bb7e9a82c401",
+    "name": "BugBoard API (v1) — Production Collection",
+    "description": "Comprehensive Postman collection for BugBoard issue tracker backend API.\nBase URL: {{baseUrl}}\nIncludes Auth, RBAC, Issue Workflow, Attachments, Notifications, Team Management, and Audit Trails.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "gpatole473@gmail.com",
+      "type": "string"
+    },
+    {
+      "key": "devEmail",
+      "value": "shastrisujata006@gmail.com",
+      "type": "string"
+    },
+    {
+      "key": "testerEmail",
+      "value": "tester@bugboard.test",
+      "type": "string"
+    },
+    {
+      "key": "defaultPassword",
+      "value": "Password123!",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "issueId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "targetUserId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. System Health",
+      "item": [
+        {
+          "name": "Get API & DB Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Verifies server connectivity and MongoDB Atlas connection status."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication & Passwords",
+      "item": [
+        {
+          "name": "Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('token', res.data.token);",
+                  "    pm.collectionVariables.set('adminToken', res.data.token);",
+                  "    pm.environment.set('token', res.data.token);",
+                  "    console.log('Token automatically saved to environment and collection variables.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{defaultPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticates as Admin and extracts JWT token into collection variables."
+          }
+        },
+        {
+          "name": "Login (Lead Developer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('token', res.data.token);",
+                  "    pm.collectionVariables.set('devToken', res.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{devEmail}}\",\n  \"password\": \"{{defaultPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login (QA Tester)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('token', res.data.token);",
+                  "    pm.collectionVariables.set('testerToken', res.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testerEmail}}\",\n  \"password\": \"{{defaultPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Register User (Developer/Tester)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Engineer\",\n  \"email\": \"jane.eng@example.com\",\n  \"password\": \"Password123!\",\n  \"role\": \"Developer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Registers a new Developer or Tester. Admin registration is forbidden by design."
+          }
+        },
+        {
+          "name": "Get Authenticated User (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Change Password (Self-Service)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"Password123!\",\n  \"newPassword\": \"NewPassword123!\",\n  \"confirmNewPassword\": \"NewPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "change-password"]
+            },
+            "description": "Updates password and immediately invalidates all other active JWT sessions."
+          }
+        },
+        {
+          "name": "Forgot Password (Request Reset Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{devEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Dispatches a single-use crypto token to user email. Anti-enumeration returns 200 regardless."
+          }
+        },
+        {
+          "name": "Reset Password (With Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"PUT_RESET_TOKEN_HERE\",\n  \"newPassword\": \"Password123!\",\n  \"confirmNewPassword\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Users & Team Management",
+      "item": [
+        {
+          "name": "Get Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile (Me)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"+1-555-0199\",\n  \"avatarUrl\": \"https://images.unsplash.com/photo-1534528741775-53994a69daeb\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          }
+        },
+        {
+          "name": "List Users (Admin: All / Dev: Co-members)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.length > 0) {",
+                  "    pm.collectionVariables.set('targetUserId', res.data[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users?role=Developer",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "Developer",
+                  "description": "Optional filter: Admin | Developer | Tester"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{targetUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{targetUserId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Update User (Role / Designation / Status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"Developer\",\n  \"department\": \"Engineering\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{targetUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{targetUserId}}"]
+            },
+            "description": "Admin updates role (Developer/Tester only) or toggles isActive. Self-edit and Admin promotion are rejected."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Projects",
+      "item": [
+        {
+          "name": "Create Project (Admin only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data._id) {",
+                  "    pm.collectionVariables.set('projectId', res.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Platform Core Engine\",\n  \"key\": \"CORE\",\n  \"description\": \"Core infrastructure and distributed backend services\",\n  \"members\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"]
+            }
+          }
+        },
+        {
+          "name": "List Projects",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.length > 0) {",
+                  "    pm.collectionVariables.set('projectId', res.data[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"]
+            }
+          }
+        },
+        {
+          "name": "Get Project by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Project (Admin only)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Platform Core Engine (v2)\",\n  \"description\": \"Updated description for platform services\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Project (Admin only - Cascade)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}"]
+            },
+            "description": "Cascades deletion across issues, comments, activities, and attachments (DB records & physical files)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Issues & Workflow",
+      "item": [
+        {
+          "name": "Create Issue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data._id) {",
+                  "    pm.collectionVariables.set('issueId', res.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Memory leak during high throughput payload processing\",\n  \"description\": \"Garbage collector spikes under high load; workers exceed heap limit.\",\n  \"project\": \"{{projectId}}\",\n  \"priority\": \"Urgent\",\n  \"severity\": \"Critical\",\n  \"assignee\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/issues",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues"]
+            }
+          }
+        },
+        {
+          "name": "List Issues (Paginated & Filtered)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.length > 0) {",
+                  "    pm.collectionVariables.set('issueId', res.data[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/issues?page=1&limit=20&status=Open&sort=-createdAt",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "status", "value": "Open" },
+                { "key": "sort", "value": "-createdAt" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Issue by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Issue Details (General)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Issue Title\",\n  \"priority\": \"High\",\n  \"severity\": \"High\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}"]
+            }
+          }
+        },
+        {
+          "name": "Transition Issue Status (State Machine)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"In Progress\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}", "status"]
+            },
+            "description": "Executes state transition: Open -> In Progress -> Testing -> Resolved -> Closed. Role verified."
+          }
+        },
+        {
+          "name": "Update Issue Assignee",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignee\": \"{{targetUserId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}/assignee",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}", "assignee"]
+            }
+          }
+        },
+        {
+          "name": "Delete Issue (Reporter / Admin - Cascade)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Comments",
+      "item": [
+        {
+          "name": "List Comments on Issue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}", "comments"]
+            }
+          }
+        },
+        {
+          "name": "Add Comment to Issue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Investigated heap dump: leak caused by unbounded event listener buffer in worker thread.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}", "comments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Activities & Audit Trails",
+      "item": [
+        {
+          "name": "Get Issue Activity Log",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}", "activities"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Attachments",
+      "item": [
+        {
+          "name": "List Attachments for Issue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}/attachments",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}", "attachments"]
+            }
+          }
+        },
+        {
+          "name": "Upload Attachment (Multipart Form)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Max 5MB (PNG, JPEG, GIF, PDF, TXT, LOG)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/issues/{{issueId}}/attachments",
+              "host": ["{{baseUrl}}"],
+              "path": ["issues", "{{issueId}}", "attachments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Dashboard & Analytics",
+      "item": [
+        {
+          "name": "Get Dashboard Metrics & Work Queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["dashboard"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Notifications",
+      "item": [
+        {
+          "name": "Get Notifications (Unread First)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"],
+              "query": [
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "read-all"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

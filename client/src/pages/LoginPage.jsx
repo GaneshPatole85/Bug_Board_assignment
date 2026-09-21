@@ -6,6 +6,7 @@ import './LoginPage.css';
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState(null);
   // Top-level form error banner
   const [error, setError] = useState(null);
   // Per-field inline errors
@@ -69,7 +70,8 @@ export const LoginPage = () => {
     }
   };
 
-  const fillQuickLogin = (demoEmail, demoPassword) => {
+  const handleSelectRole = (role, demoEmail, demoPassword) => {
+    setSelectedRole(role);
     setEmail(demoEmail);
     setPassword(demoPassword);
     setError(null);
@@ -79,8 +81,14 @@ export const LoginPage = () => {
   return (
     <div className="auth-card" id="login-card">
       <div className="auth-header">
-        <h1 className="auth-title">Sign in to BugBoard</h1>
-        <p className="auth-subtitle">Enter your credentials to access your workspace</p>
+        <h1 className="auth-title" id="login-card-title">
+          {selectedRole ? `Sign in as ${selectedRole}` : 'Sign in to BugBoard'}
+        </h1>
+        <p className="auth-subtitle">
+          {selectedRole
+            ? `Credentials loaded for ${selectedRole}. Click below to access workspace.`
+            : 'Enter your credentials to access your workspace'}
+        </p>
       </div>
 
       {registerSuccessMsg && (
@@ -105,7 +113,10 @@ export const LoginPage = () => {
             type="email"
             className={`form-input ${fieldErrors.email ? 'input-invalid' : ''}`}
             value={email}
-            onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearFieldError('email');
+            }}
             placeholder="name@company.com"
             autoComplete="email"
             aria-invalid={Boolean(fieldErrors.email)}
@@ -132,7 +143,10 @@ export const LoginPage = () => {
             type="password"
             className={`form-input ${fieldErrors.password ? 'input-invalid' : ''}`}
             value={password}
-            onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              clearFieldError('password');
+            }}
             placeholder="••••••••"
             autoComplete="current-password"
             aria-invalid={Boolean(fieldErrors.password)}
@@ -151,7 +165,11 @@ export const LoginPage = () => {
           id="login-submit-btn"
           className="auth-submit-btn"
         >
-          {isSubmitting ? 'Authenticating...' : 'Sign in'}
+          {isSubmitting
+            ? 'Authenticating...'
+            : selectedRole
+              ? `Sign in as ${selectedRole}`
+              : 'Sign in'}
         </button>
       </form>
 
@@ -160,34 +178,37 @@ export const LoginPage = () => {
         <Link to="/register">Create one</Link>
       </div>
 
-      {/* Demo Quick-Fill Section for Reviewers */}
+      {/* Demo Quick-Selection Section */}
       <div className="auth-demo-section">
         <span className="auth-demo-label">Demo accounts</span>
 
         <div className="auth-demo-grid">
           <button
             type="button"
-            className="auth-demo-btn"
-            onClick={() => fillQuickLogin('admin@bugboard.test', 'Password123!')}
-            title="Admin account (Full system rights)"
+            className={`auth-demo-btn ${selectedRole === 'Admin' ? 'active' : ''}`}
+            id="demo-admin-btn"
+            onClick={() => handleSelectRole('Admin', 'gpatole473@gmail.com', 'Password123!')}
+            title="Load Admin account credentials"
           >
             <span>👑</span> Admin
           </button>
 
           <button
             type="button"
-            className="auth-demo-btn"
-            onClick={() => fillQuickLogin('dev@bugboard.test', 'Password123!')}
-            title="Developer account (Assignments & updates)"
+            className={`auth-demo-btn ${selectedRole === 'Developer' ? 'active' : ''}`}
+            id="demo-dev-btn"
+            onClick={() => handleSelectRole('Developer', 'shastrisujata006@gmail.com', 'Password123!')}
+            title="Load Lead Developer account credentials"
           >
             <span>💻</span> Developer
           </button>
 
           <button
             type="button"
-            className="auth-demo-btn"
-            onClick={() => fillQuickLogin('tester@bugboard.test', 'Password123!')}
-            title="Tester account (Bug reporting & verification)"
+            className={`auth-demo-btn ${selectedRole === 'Tester' ? 'active' : ''}`}
+            id="demo-tester-btn"
+            onClick={() => handleSelectRole('Tester', 'tester@bugboard.test', 'Password123!')}
+            title="Load QA Tester account credentials"
           >
             <span>🔍</span> Tester
           </button>

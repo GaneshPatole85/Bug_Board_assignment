@@ -167,10 +167,32 @@
   gap: 6px;
 }
 
+.form-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
 .form-label {
   font-size: 0.825rem;
   font-weight: 600;
   color: var(--color-ink);
+}
+
+.form-char-count {
+  font-size: 0.75rem;
+  color: var(--color-slate);
+  font-family: var(--font-mono, monospace);
+}
+
+.form-char-count.limit-near {
+  color: var(--priority-medium);
+}
+
+.form-char-count.limit-reached {
+  color: var(--priority-urgent);
+  font-weight: 600;
 }
 
 .field-required {

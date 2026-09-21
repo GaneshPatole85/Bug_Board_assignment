@@ -32,6 +32,32 @@
 | B38 | Run 1 | Authorization / IDOR Information Leak | Medium | `GET /api/v1/issues` | Developer / Tester | When a user belonged to 0 projects, `GET /api/v1/issues?project=<foreign_id>` returned `200 OK` with `{ data: [] }` instead of `403 Forbidden`. | Remove user from all projects -> Call `GET /issues?project=<foreign_id>` | `server/tests/deep-hunt.test.js` (`B38`) | Fixed | Run 1 | `issue.service.js:getIssues` validates `queryParams.project` authorization prior to 0-projects early return; returns consistent 403 Forbidden. |
 | B39 | Run 1 | Information Disclosure / Cryptographic Timing | Low | `POST /api/v1/auth/login` | Public / Unauthenticated | Unregistered email login returned in ~2ms, while registered email executed `bcrypt.compare` (~250ms), allowing account enumeration. | Benchmark response latency for non-existent vs. existing email | `server/tests/deep-hunt.test.js` (`B39`) | Fixed | Run 1 | `auth.service.js:loginUser` executes dummy bcrypt comparison on invalid emails, equalizing response timing. |
 | B48 | Run 2 | Input Validation / Type Confusion | Low | Mutating Endpoints (`POST /comments`, `POST/PATCH /projects`, `PATCH /users/me`, `POST /auth/register`) | All Roles / Public | String fields (`content`, `name`, `phone`) lacked `.isString()`. When nested object payloads (e.g. `{"content": {"evil": "nested"}}` or `{"name": {"evil": "obj"}}`) were passed, express-validator's `trim()` implicitly coerced the object into `"[object Object]"`, passing validation with 200/201 and storing corrupted data. | Send `{"content": {"evil": "nested"}}` to `POST /api/v1/issues/:id/comments` or `{"name": {"evil": "obj"}}` to `POST /api/v1/projects` | `server/tests/deep-hunt.test.js` (`B40-g`, `B42-c`, `B45-b`, `B45-c`) | Fixed | Run 2 | Added `.isString().withMessage(...)` before `.trim()` across `comment.validators.js`, `project.validators.js`, `user.validators.js`, and `auth.validators.js`. Added `validateTransition` alias in `workflow.service.js`. |
+| B49 | Run 3 | Cross-Feature / Auth | Medium | `POST /api/v1/auth/reset-password` | Deactivated User | `authService.resetPassword` did not verify `user.isActive`. If an active user requested a password reset token and was subsequently deactivated by an Admin, the deactivated user could still submit `POST /api/v1/auth/reset-password` with their unexpired token to reset credentials. | 1. Request reset token via `POST /auth/forgot-password`.<br>2. Admin deactivates user via `PATCH /users/:id` with `isActive: false`.<br>3. Submit `POST /auth/reset-password` with token and new password.<br>4. Password is reset despite account deactivation. | `server/tests/super-deep-hunt.test.js` (`XF-01`) | Fixed | Run 4 | `auth.service.js:resetPassword` checks `if (!user \|\| user.isActive === false)` and rejects with generic 400. Verified by `super-deep-hunt.test.js`. |
+| B50 | Run 4 | Cross-Feature / Notifications | Low | `PATCH /api/v1/issues/:id/status` & `PATCH /api/v1/issues/:id/assignee` | Deactivated User | `notificationService.notifyStatusChange` and `notifyAssignment` did not filter by `isActive: true`. When issue status or assignee was updated, in-app notifications and external emails were still dispatched to deactivated accounts. | 1. Assign issue to user.<br>2. Admin deactivates user (`isActive: false`).<br>3. Admin updates issue status.<br>4. Notification and email are dispatched to the deactivated user. | `server/tests/super-deep-hunt.test.js` (`XF-06`) | Fixed | Run 5 | Filtered `isActive !== false` in `notification.service.js:notifyStatusChange` and `notifyAssignment`. Regression verified by `super-deep-hunt.test.js`. |
+| B51 | Run 4 | Cross-Feature / Referential Integrity / Storage Leak | Medium | `DELETE /api/v1/issues/:id` & `DELETE /api/v1/projects/:id` | Admin / Reporter | Cascading deletion on issue and project deletion cleaned `Comment` and `Activity` documents, but omitted `Attachment` records and storage files, leaving orphaned `Attachment` documents in MongoDB and dangling files on storage indefinitely. | 1. Upload attachment to an issue.<br>2. Delete the issue via `DELETE /issues/:id` or its project via `DELETE /projects/:id`.<br>3. Attachment document remained in MongoDB pointing to deleted issue. | `server/tests/super-deep-hunt.test.js` (`XF-07`, `XF-08`) | Fixed | Run 5 | Cascade cleanup added to `issue.service.js:deleteIssue` and `project.service.js:deleteProject` to delete Attachment documents and physical files via `storageService.deleteFile`. Regression verified by `super-deep-hunt.test.js`. |
+
+## Cross-Feature Interaction Log
+
+| ID | Run Found | Features Combined | Scenario | Outcome | Bug Found? | Regression Test | Status |
+|----|-----------|--------------------|----------|---------|------------|------------------|--------|
+| XF-01 | Run 3 | Deactivation × Password Reset | Account requested reset token, then Admin deactivated user before reset link used | Reset cleanly rejected with 400 Bad Request; password unchanged | Yes (B49) | `server/tests/super-deep-hunt.test.js` (`XF-01`) | Fixed (Run 4) |
+| XF-02 | Run 3 | Deactivation × Assignment | Active user assigned to issue is deactivated; detail view fetched; new assignment attempted | Existing assignment renders cleanly on detail page; attempting to newly assign deactivated user rejected with 422 ("Selected assignee is inactive") | No | `server/tests/super-deep-hunt.test.js` (`XF-02`) | Verified Enforced |
+| XF-03 | Run 3 | Password Change × Active Sessions | Tab A in flight with JWT while Tab B changes password | Tab A request immediately rejected with 401 ("Session expired, please sign in again"); Kanban state uncorrupted | No | `server/tests/super-deep-hunt.test.js` (`XF-03`) | Verified Enforced |
+| XF-04 | Run 3 | Employee ID Immutability × Team Edit × Self-Guard | Admin edits another user's designation while injecting employeeId in body, then attempts self-edit | Designation updates, employeeId silently ignored/preserved; self-edit rejected with 403 Forbidden | No | `server/tests/super-deep-hunt.test.js` (`XF-04`) | Verified Enforced |
+| XF-05 | Run 3 | Attachments × Project Membership Change | Member uploads attachment then gets removed from project members; attempts download | Removed user gets 403 Forbidden; existing members can still download | No | `server/tests/super-deep-hunt.test.js` (`XF-05`) | Verified Enforced |
+| XF-06 | Run 4 | Notifications × Deactivation | Status changed on issue where deactivated user was previously reporter/assignee | Active status filter prevents notification creation or email dispatch to deactivated users | Yes (B50) | `server/tests/super-deep-hunt.test.js` (`XF-06`) | Fixed (Run 5) |
+| XF-07 | Run 4 | Issue Deletion × Attachment Cascade | Issue with attachments deleted by reporter or admin | Attachments and physical storage files cleanly deleted alongside comments and activities | Yes (B51) | `server/tests/super-deep-hunt.test.js` (`XF-07`) | Fixed (Run 5) |
+| XF-08 | Run 4 | Project Deletion × Attachment Cascade | Project with issues and attachments deleted by admin | All attachments across all project issues cascade deleted from DB and storage | Yes (B51) | `server/tests/super-deep-hunt.test.js` (`XF-08`) | Fixed (Run 5) |
+| XF-09 | Run 3 | Atlas Migration × Relationship Integrity | Data relations verified against live MongoDB Atlas cluster | All ObjectId references, project memberships, and issue relationships resolve correctly with zero dangling pointers | No | Live verified against Atlas `bugboard` | Verified Intact |
+| XF-10 | Run 3 | Rate Limiting × Authenticated Burst Use | Authenticated user submits 25 simultaneous queries | Auth rate limits isolate public endpoints; authenticated burst within normal limit passes with 200/201 | No | `server/tests/super-deep-hunt.test.js` (`Dimension 4`) | Verified Enforced |
+
+## Chaos / Dependency-Failure Log
+
+| ID | Run Found | Dependency | Failure Simulated | Expected Behavior | Actual Behavior | Bug Found? | Status |
+|----|-----------|------------|--------------------|--------------------|--------------------|------------|--------|
+| CH-01 | Run 3 | Mailpit / SMTP | SMTP server connection refused (`ECONNREFUSED 127.0.0.1:1025`) during registration, forgot password, and assignment | Fire-and-forget logging; HTTP endpoints return 200/201 successfully without leaking errors or failing request | Dispatched safely via `_sendEmailSafe` catch block; warnings logged server-side; HTTP status codes 201/200 preserved | No | Verified Resilient |
+| CH-02 | Run 3 | MinIO / Object Storage | Object storage write failure (`MinIO S3 network timeout`) during attachment upload | Request fails cleanly with 500; no orphaned Attachment document persisted in MongoDB | 500 returned to client; zero orphaned Attachment documents in database | No | Verified Resilient |
+| CH-03 | Run 3 | MongoDB / Mongoose | Database network error (`MongoNetworkError`) mid-query simulating connection outage | Centralized error handler returns clean 500 without leaking connection string, credentials, or stack traces | Response body returns `{ success: false, message: 'Internal server error', errors: [] }`; connection string and driver details suppressed | No | Verified Resilient |
 
 ## Exploit Chains
 
@@ -39,6 +65,8 @@
 |----|-----------|--------------------|------------------|----------|---------------------|--------|
 | EC-1 | Run 1 | B13, B16 | Targeted silent ticket unassignment: Developer enumerates admin and team member IDs via unscoped `GET /users` (B13), identifies assigned issues, and sends empty bodies `{}` to `PATCH /issues/:id/assignee` (B16) to silently clear assignees. | Medium | 1. Authenticate as Developer.<br>2. Call `GET /api/v1/users` to harvest user IDs.<br>3. Send `{}` to `PATCH /api/v1/issues/:id/assignee`.<br>4. Target issue is silently unassigned. | Neutralized (B13 scoped, B16 rejected with 422) |
 | EC-2 | Run 1 | B15, B38 | Accidental project lockout and authorization bypass inconsistency: Admin updates project members without including themselves (B15), leaving non-admin users in an orphaned state. Users with 0 project memberships then experience inconsistent authorization (B38). | High | 1. Admin calls `PATCH /projects/:id` with `members: [devId]`.<br>2. Admin is ejected.<br>3. Removed users query foreign projects and get 200 OK. | Neutralized (Admin preserved in members, foreign project returns 403) |
+| EC-3 | Run 3 | B49, Deactivation | Persistent Credential Takeover on Deactivated Account: An insider or rogue employee facing imminent deactivation requests a password reset token. Following Admin deactivation (which correctly invalidates active JWT sessions), the employee uses the unexpired reset token to reset the password. While login is blocked by isActive checks, the employee retains known valid credentials if the account is ever administratively re-enabled. | Medium | 1. User requests password reset via `POST /auth/forgot-password`.<br>2. Admin deactivates user account (`isActive: false`).<br>3. User submits `POST /auth/reset-password` with the token.<br>4. Password is reset successfully on the deactivated account. | Neutralized (B49 fixed in Run 4: isActive verified on reset) |
+| EC-4 | Run 4 | B51, Attachments | Storage Exhaustion & Orphaned PII/Asset Accumulation: An attacker or malicious insider uploads large (5MB) attachments across multiple ephemeral projects or issues, then immediately deletes the issues or projects. Because attachments were never cascade-deleted, disk storage and DB documents silently accumulated indefinitely without any visible UI reference or administrative cleanup mechanism. | Medium | 1. Upload 5MB attachment to an issue.<br>2. Delete the issue or project.<br>3. Attachment document and file remain on server indefinitely. | Neutralized (B51 fixed in Run 5: cascade delete cleans DB & storage) |
 
 ## Suspected — Falsification Attempted, Inconclusive
 
@@ -51,40 +79,59 @@
 
 | Category | Endpoint/Screen | Role | Last Run Tested | Outcome |
 |----------|------------------|------|------------------|---------|
-| Auth | `POST /api/v1/auth/register` | Public | Run 2 | Enforced / Fixed (B48: Object type confusion rejected with 422; Admin self-reg blocked) |
-| Auth | `POST /api/v1/auth/login` | Public | Run 2 | Enforced (B39 timing leak eliminated, deactivated accounts return 401) |
-| Auth | `GET /api/v1/auth/me` | Developer / Tester / Admin | Run 2 | Enforced (Immediate 401 revocation upon account deactivation) |
-| Users | `GET /api/v1/users` | Developer / Tester | Run 1 | Enforced / Fixed (B13: Scoped to project co-members, Admin hidden) |
-| Users | `PATCH /api/v1/users/me` | Developer / Tester / Admin | Run 2 | Enforced / Fixed (Email self-edit with 409 collision check; B48 type confusion rejected; dangerous avatar protocols blocked; mass-assignment blocked) |
-| Users | `GET /api/v1/users/:id` | Developer / Tester | Run 2 | Enforced (403 Forbidden for non-admins) |
-| Users | `PATCH /api/v1/users/:id` | Admin (self-edit) | Run 2 | Enforced (403 blanket prohibition per ADR 05) |
-| Users | `PATCH /api/v1/users/:id` | Admin (employeeId) | Run 2 | Enforced (Silently ignored, value immutable per ADR 06) |
-| Projects | `POST /api/v1/projects` | Admin | Run 2 | Enforced / Fixed (B48: Object name type confusion rejected with 422; key validation enforced) |
-| Projects | `POST /api/v1/projects` | Developer / Tester | Run 1 | Enforced (403 Forbidden for non-admins) |
-| Projects | `GET /api/v1/projects` | Developer / Tester / Admin | Run 1 | Enforced (Scoped to project members for non-admins) |
-| Projects | `GET /api/v1/projects/:id` | Member vs Non-member | Run 1 | Enforced (403 for non-members, 200 for members) |
-| Projects | `PATCH /api/v1/projects/:id` | Admin | Run 2 | Enforced / Fixed (B48: Object name rejected with 422; B15 admin preserved; B17 empty members rejected; B21 dangling assignees cleaned) |
-| Projects | `PATCH /api/v1/projects/:id` | Developer / Tester | Run 1 | Enforced (403 Forbidden for non-admins) |
-| Projects | `DELETE /api/v1/projects/:id` | Admin vs Non-admin | Run 2 | Enforced (Admin deletes cleanly; non-admin blocked with 403; orphaned issues safely return 404) |
-| Issues | `POST /api/v1/issues` | Developer / Tester / Admin | Run 1 | Enforced (Reporter forced to req.user.id, boundaries validated) |
-| Issues | `GET /api/v1/issues` | Non-member (0 projects) | Run 1 | Enforced / Fixed (B38: 403 Forbidden consistently enforced) |
-| Issues | `GET /api/v1/issues` | Member vs Non-member | Run 1 | Enforced (403 on foreign project) |
-| Issues | `GET /api/v1/issues/:id` | Member vs Non-member | Run 1 | Enforced (403 for non-members, null project guarded) |
-| Issues | `PATCH /api/v1/issues/:id` | Member (General) | Run 1 | Enforced / Fixed (B36: Activity audit logged; B37: Type confusion rejected) |
-| Issues | `PATCH /api/v1/issues/:id` | Non-member | Run 1 | Enforced (403 Forbidden) |
-| Issues | `PATCH /api/v1/issues/:id/status` | All Roles (Self-transitions) | Run 1 | Enforced (B18: 400 rejected on all 5 self-transitions) |
-| Issues | `PATCH /api/v1/issues/:id/status` | All Roles (Illegal edges) | Run 1 | Enforced (B19: 400 rejected on all 13 illegal edges) |
-| Issues | `PATCH /api/v1/issues/:id/status` | Developer / Tester (RBAC) | Run 1 | Enforced (B20: Role-restricted transitions enforced) |
-| Issues | `PATCH /api/v1/issues/:id/status` | Non-member | Run 1 | Enforced (403 Forbidden before status check) |
-| Issues | `PATCH /api/v1/issues/:id/assignee`| Member | Run 1 | Enforced / Fixed (B16: Explicit assignee key required, empty body 422) |
-| Issues | `GET /api/v1/issues/:id/activities`| Member vs Non-member | Run 1 | Enforced (403 for non-members) |
-| Issues | `DELETE /api/v1/issues/:id` | Reporter vs Non-reporter vs Admin | Run 2 | Enforced (Reporter and Admin allowed; non-reporter non-admin blocked with 403) |
-| Comments | `POST /api/v1/issues/:id/comments`| Member | Run 2 | Enforced / Fixed (B48: Object type confusion rejected with 422; author forced to authenticated user; 2000 char boundary enforced) |
-| Comments | `POST /api/v1/issues/:id/comments`| Non-member | Run 2 | Enforced (403 Forbidden cross-project IDOR blocked) |
-| Comments | `GET /api/v1/issues/:id/comments` | Member vs Non-member | Run 2 | Enforced (403 for non-members; pagination boundaries limit=0, -1, abc, 99999 rejected with 422) |
+| Auth | `POST /api/v1/auth/register` | Public | Run 5 | Saturated (Clean 5 runs: input validation, timing attack, type confusion, mass-assignment blocked) |
+| Auth | `POST /api/v1/auth/login` | Public | Run 5 | Saturated (Clean 5 runs: constant-time bcrypt compare, deactivation check, rate limiting) |
+| Auth | `GET /api/v1/auth/me` | Developer / Tester / Admin | Run 5 | Saturated (Clean 5 runs: immediate 401 revocation upon deactivation/password change) |
+| Auth | `PATCH /api/v1/auth/change-password` | Authenticated | Run 5 | Saturated (Updates passwordChangedAt; invalidates active sessions) |
+| Auth | `POST /api/v1/auth/forgot-password` | Public | Run 5 | Saturated (Anti-enumeration identical response; fire-and-forget SMTP) |
+| Auth | `POST /api/v1/auth/reset-password` | Public / Deactivated | Run 5 | Saturated / Fixed (B49: isActive verified during reset; 400 enforced) |
+| Users | `GET /api/v1/users` | Developer / Tester | Run 2 | Enforced (B13: Scoped to project co-members, Admin hidden) |
+| Users | `PATCH /api/v1/users/me` | Developer / Tester / Admin | Run 5 | Saturated (Clean 5 runs: collision check, mass-assignment blocked, avatar protocol validated) |
+| Users | `GET /api/v1/users/:id` | Developer / Tester | Run 5 | Saturated (Clean 5 runs: 403 Forbidden for non-admins) |
+| Users | `PATCH /api/v1/users/:id` | Admin (self-edit) | Run 5 | Saturated (Clean 5 runs: 403 blanket prohibition per ADR 05) |
+| Users | `PATCH /api/v1/users/:id` | Admin (employeeId) | Run 5 | Saturated (Clean 5 runs: Silently ignored, value immutable per ADR 06) |
+| Projects | `POST /api/v1/projects` | Admin | Run 5 | Saturated (Clean 5 runs: Type confusion rejected, unique key 409, creator auto-added) |
+| Projects | `POST /api/v1/projects` | Developer / Tester | Run 2 | Enforced (403 Forbidden for non-admins) |
+| Projects | `GET /api/v1/projects` | Developer / Tester / Admin | Run 2 | Enforced (Scoped to project members for non-admins) |
+| Projects | `GET /api/v1/projects/:id` | Member vs Non-member | Run 2 | Enforced (403 for non-members, 200 for members) |
+| Projects | `PATCH /api/v1/projects/:id` | Admin | Run 5 | Saturated (Clean 5 runs: B15 admin preserved; B17 empty rejected; B21 assignees cleaned) |
+| Projects | `PATCH /api/v1/projects/:id` | Developer / Tester | Run 2 | Enforced (403 Forbidden for non-admins) |
+| Projects | `DELETE /api/v1/projects/:id` | Admin vs Non-admin | Run 5 | Saturated / Fixed (B51: cascade deletes issues, comments, activities, and attachments) |
+| Issues | `POST /api/v1/issues` | Developer / Tester / Admin | Run 5 | Saturated (Clean 5 runs: Reporter forced server-side, boundaries validated, 25 concurrent clean) |
+| Issues | `GET /api/v1/issues` | Non-member (0 projects) | Run 2 | Enforced (B38: 403 Forbidden consistently enforced) |
+| Issues | `GET /api/v1/issues` | Member vs Non-member | Run 5 | Saturated (Clean 5 runs: 403 on foreign project) |
+| Issues | `GET /api/v1/issues/:id` | Member vs Non-member | Run 5 | Saturated (Clean 5 runs: 403 for non-members, null project guarded) |
+| Issues | `PATCH /api/v1/issues/:id` | Member (General) | Run 5 | Saturated (Clean 5 runs: Activity audit logged; status/assignee rejected with 422) |
+| Issues | `PATCH /api/v1/issues/:id` | Non-member | Run 2 | Enforced (403 Forbidden) |
+| Issues | `PATCH /api/v1/issues/:id/status` | All Roles (Self-transitions) | Run 5 | Saturated (Clean 5 runs: 400 rejected on all 5 self-transitions) |
+| Issues | `PATCH /api/v1/issues/:id/status` | All Roles (Illegal edges) | Run 5 | Saturated (Clean 5 runs: 400 rejected on all 13 illegal edges) |
+| Issues | `PATCH /api/v1/issues/:id/status` | Developer / Tester (RBAC) | Run 5 | Saturated (Clean 5 runs: Role-restricted transitions enforced) |
+| Issues | `PATCH /api/v1/issues/:id/status` | Non-member | Run 2 | Enforced (403 Forbidden before status check) |
+| Issues | `PATCH /api/v1/issues/:id/assignee`| Member | Run 5 | Saturated (Clean 5 runs: Explicit assignee required, inactive user rejected with 422) |
+| Issues | `GET /api/v1/issues/:id/activities`| Member vs Non-member | Run 2 | Enforced (403 for non-members) |
+| Issues | `DELETE /api/v1/issues/:id` | Reporter vs Non-reporter vs Admin | Run 5 | Saturated / Fixed (B51: cascade deletes comments, activities, and attachments) |
+| Comments | `POST /api/v1/issues/:id/comments`| Member | Run 5 | Saturated (Clean 5 runs: Author forced to caller; type confusion rejected with 422) |
+| Comments | `POST /api/v1/issues/:id/comments`| Non-member | Run 5 | Saturated (Clean 5 runs: 403 Forbidden cross-project IDOR blocked) |
+| Comments | `GET /api/v1/issues/:id/comments` | Member vs Non-member | Run 2 | Enforced (403 for non-members; pagination boundaries enforced) |
 | Notifications | `GET /api/v1/notifications` | Developer / Tester / Admin | Run 2 | Enforced (Strictly scoped to authenticated user) |
 | Notifications | `PATCH /api/v1/notifications/:id/read` | Cross-user IDOR | Run 2 | Enforced (404 Not Found for non-recipient) |
 | Notifications | `PATCH /api/v1/notifications/read-all` | Authenticated | Run 2 | Enforced (Marks only caller's notifications read) |
+| Attachments | `POST /api/v1/issues/:id/attachments` | Member vs Non-member | Run 5 | Saturated (Clean 3 runs: Storage write before DB record; non-member blocked with 403) |
 | Attachments | `GET /api/v1/issues/:id/attachments` | Member vs Non-member | Run 2 | Enforced (403 Forbidden on foreign project issue) |
-| Attachments | `GET /api/v1/attachments/:id/download` | Authenticated | Run 2 | Enforced (404 Not Found on invalid ID) |
-| Dashboard | `GET /api/v1/dashboard` | Developer / Tester / Admin | Run 1 | Enforced (Scoped metrics and activities) |
+| Attachments | `GET /api/v1/attachments/:id/download` | Member vs Removed Member | Run 5 | Saturated (Clean 3 runs: Removed member blocked with 403; active members allowed) |
+| Dashboard | `GET /api/v1/dashboard` | Developer / Tester / Admin | Run 2 | Enforced (Scoped metrics and activities) |
+| Cross-Feature | Deactivation × Password Reset | Public / Deactivated | Run 5 | Saturated / Fixed (B49: isActive verified during reset) |
+| Cross-Feature | Deactivation × Assignment | All Roles | Run 5 | Saturated (Details render; new assignment blocked with 422) |
+| Cross-Feature | Password Change × Active Sessions | Authenticated | Run 5 | Saturated (In-flight requests with old token rejected with 401) |
+| Cross-Feature | Employee ID Immutability × Team Edit | Admin | Run 5 | Saturated (Designation updated, employeeId ignored, self-edit 403) |
+| Cross-Feature | Attachments × Membership Change | Member -> Removed | Run 5 | Saturated (Removed member download 403; current member 200) |
+| Cross-Feature | Notifications × Deactivation | Stakeholders | Run 5 | Saturated / Fixed (B50: Inactive users filtered from notification dispatch) |
+| Cross-Feature | Issue Deletion × Attachment Cascade | Reporter / Admin | Run 5 | Saturated / Fixed (B51: Attachments and storage files cascade deleted) |
+| Cross-Feature | Project Deletion × Attachment Cascade| Admin | Run 5 | Saturated / Fixed (B51: All attachments cascade deleted from DB & storage) |
+| Chaos / Dependency | Mailpit / SMTP Outage | Public / All Roles | Run 5 | Saturated (Fire-and-forget; registration, forgot-pwd, assignment succeed) |
+| Chaos / Dependency | MinIO / Object Storage Outage | Authenticated | Run 5 | Saturated (Upload fails cleanly, 0 orphaned Attachment docs) |
+| Chaos / Dependency | MongoDB Outage Error Hygiene | Authenticated | Run 5 | Saturated (Clean 500 envelope, stack trace & URI suppressed) |
+| Mass-Assignment Sweep | All Mutating Endpoints (11 endpoints) | All Roles | Run 5 | Saturated (Sensitive fields rejected with 422 or ignored/forced server-side) |
+| Load / Concurrency | `POST /api/v1/issues` (25 concurrent) | Admin / Developer | Run 5 | Saturated (Atomic counter increment, unique keys, no race corruption) |
+| Load / Concurrency | `PATCH /api/v1/issues/:id/status` (Concurrent) | All Roles | Run 5 | Saturated (State machine atomic consistency, no split-brain state) |
+| OWASP Sweep | API Security Top 10 (API1 to API10) | All Roles | Run 5 | Saturated (All 10 categories audited with zero unhandled gaps) |

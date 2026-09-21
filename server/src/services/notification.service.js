@@ -216,7 +216,7 @@ class NotificationService {
       // Do not notify if self-assigned
       if (newAssigneeStr === actorIdStr) return;
 
-      const recipient = await User.findById(newAssigneeId).select('name email');
+      const recipient = await User.findOne({ _id: newAssigneeId, isActive: { $ne: false } }).select('name email');
       if (!recipient) return;
 
       const actorName = actor?.name || 'A team member';
@@ -265,7 +265,10 @@ class NotificationService {
 
       if (recipientIds.size === 0) return;
 
-      const recipients = await User.find({ _id: { $in: Array.from(recipientIds) } }).select('name email');
+      const recipients = await User.find({
+        _id: { $in: Array.from(recipientIds) },
+        isActive: { $ne: false },
+      }).select('name email');
       const title = `Status changed to ${newStatus}: ${issue.title}`;
       const message = `${actorName} transitioned "${issue.title}" from ${oldStatus} to ${newStatus}.`;
 

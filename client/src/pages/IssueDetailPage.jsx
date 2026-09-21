@@ -129,6 +129,27 @@ export const IssueDetailPage = () => {
     return transitionsFromCurrent.filter((t) => t.roles.includes(user.role));
   }, [issue, user]);
 
+  // Lookup map of user IDs to names for human-readable audit trails and references
+  const usersMap = useMemo(() => {
+    const map = {};
+    if (projectMembers && Array.isArray(projectMembers)) {
+      projectMembers.forEach((m) => {
+        if (m && m._id) map[m._id.toString()] = m.name || m.email;
+      });
+    }
+    if (issue?.assignee && issue.assignee._id) {
+      map[issue.assignee._id.toString()] = issue.assignee.name || issue.assignee.email;
+    }
+    if (issue?.reporter && issue.reporter._id) {
+      map[issue.reporter._id.toString()] = issue.reporter.name || issue.reporter.email;
+    }
+    if (user && (user.id || user._id)) {
+      const uId = (user.id || user._id).toString();
+      map[uId] = user.name || user.email;
+    }
+    return map;
+  }, [projectMembers, issue, user]);
+
   const handleStatusTransition = async (nextStatus) => {
     setIsTransitioning(true);
     try {
@@ -253,7 +274,7 @@ export const IssueDetailPage = () => {
           {/* Activity Timeline */}
           <div className="issue-section-card console-card">
             <h3 className="section-heading">Activity Audit Trail</h3>
-            <ActivityTimeline activities={activities} loading={loadingActivities} />
+            <ActivityTimeline activities={activities} loading={loadingActivities} usersMap={usersMap} />
           </div>
         </div>
 
