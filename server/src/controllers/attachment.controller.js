@@ -40,9 +40,10 @@ export const downloadAttachment = async (req, res, next) => {
     );
 
     res.setHeader('Content-Type', attachment.mimeType);
+    const safeFilename = attachment.originalFilename.replace(/["\r\n]/g, '_');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(attachment.originalFilename)}"`
+      `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(attachment.originalFilename)}`
     );
     res.setHeader('Content-Length', fileBuffer.length);
     res.send(fileBuffer);

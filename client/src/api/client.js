@@ -6,6 +6,19 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 /**
+ * Session-expiry notification utility.
+ * Fires a visible error toast before redirecting to /login.
+ * Uses a custom event so ToastProvider (which may not be accessible directly here) can react.
+ */
+const dispatchSessionExpiredToast = () => {
+  window.dispatchEvent(
+    new CustomEvent('bugboard:session-expired', {
+      detail: { message: 'Your session has expired — please sign in again.' },
+    })
+  );
+};
+
+/**
  * Centralized Axios instance for BugBoard.
  */
 export const apiClient = axios.create({
@@ -19,11 +32,10 @@ export const apiClient = axios.create({
 
 /**
  * Request Interceptor:
- * Prepares request and allows attaching auth tokens (scaffolded for Phase 2).
+ * Attaches JWT Authorization header from localStorage if token is present.
  */
 apiClient.interceptors.request.use(
   (config) => {
-    // Phase 2: Attach Authorization header if JWT token is stored
     const token = localStorage.getItem('bugboard_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -36,7 +48,7 @@ apiClient.interceptors.request.use(
 /**
  * Response Interceptor:
  * Normalizes all server responses and errors into a predictable JSON structure:
- * { success: boolean, message: string, errors: array, status: number }
+ * { success: boolean, message: string, errors: array, fieldErrors: object, status: number }
  */
 apiClient.interceptors.response.use(
   (response) => {
@@ -48,24 +60,32 @@ apiClient.interceptors.response.use(
       success: false,
       message: 'Network or server error',
       errors: [],
-      fieldErrors: {}, // Map of { fieldName: errorMessage } for inline display
+      fieldErrors: {}, // Map of { fieldName: errorMessage } for inline form display
       status: 500,
     };
 
     if (error.response) {
+      const { status, data } = error.response;
+      normalizedError.status = status;
+
       // Automatic session cleanup on 401 Unauthorized
-      if (error.response.status === 401) {
+      if (status === 401) {
         localStorage.removeItem('bugboard_token');
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-          window.location.href = '/login';
+        if (
+          typeof window !== 'undefined' &&
+          window.location.pathname !== '/login' &&
+          window.location.pathname !== '/register'
+        ) {
+          // Notify the user with a toast before redirecting
+          dispatchSessionExpiredToast();
+          // Small delay to let the toast render before navigation
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 400);
         }
       }
 
-      // Server responded with an error status (4xx, 5xx)
-      const data = error.response.data;
-      normalizedError.status = error.response.status;
-
-      // Build fieldErrors map from the express-validator errors array
+      // Build errors array from the backend { success, message, errors } envelope
       const rawErrors = Array.isArray(data?.errors)
         ? data.errors
         : data?.errors
@@ -82,19 +102,21 @@ apiClient.interceptors.response.use(
           }
         });
         normalizedError.fieldErrors = fieldMap;
-        // Create a human-readable joined message from all field errors
+
+        // Build a human-readable joined message from all error entries
         normalizedError.message = rawErrors.map((e) => e.message).join(' · ');
       } else {
-        normalizedError.message = data?.message || `Request failed with status ${error.response.status}`;
+        normalizedError.message = data?.message || `Request failed with status ${status}`;
       }
     } else if (error.request) {
-      // Request was made but no response received (e.g. server down)
+      // Request was made but no response received (server offline, timeout, CORS)
       normalizedError.status = 0;
-      normalizedError.message = 'Unable to reach BugBoard server. Please check your backend connection.';
+      normalizedError.message =
+        "Couldn't reach the BugBoard server. Check your connection and try again.";
       normalizedError.errors = [{ message: 'Network connectivity issue or server offline' }];
     } else {
-      // Something happened while triggering request
-      normalizedError.message = error.message;
+      // Error occurred while setting up the request
+      normalizedError.message = error.message || 'An unexpected error occurred.';
     }
 
     return Promise.reject(normalizedError);

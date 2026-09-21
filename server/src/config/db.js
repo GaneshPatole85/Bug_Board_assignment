@@ -100,11 +100,12 @@ export const setupGracefulShutdown = (server) => {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
   process.on('unhandledRejection', (reason, promise) => {
-    logger.fatal({ reason, promise }, 'Unhandled Promise Rejection detected');
+    logger.fatal({ reason, promise }, 'Unhandled Promise Rejection detected. Commencing graceful shutdown...');
+    shutdown('unhandledRejection');
   });
 
   process.on('uncaughtException', (error) => {
-    logger.fatal({ error: error.message, stack: error.stack }, 'Uncaught Exception detected');
-    process.exit(1);
+    logger.fatal({ error: error.message, stack: error.stack }, 'Uncaught Exception detected. Commencing graceful shutdown...');
+    shutdown('uncaughtException');
   });
 };

@@ -88,6 +88,16 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  /**
+   * Merge partial user data into the current auth user state.
+   * Called by ProfilePage after a successful PATCH /api/v1/users/me
+   * so the navbar and any user-derived UI reflects the change immediately.
+   * @param {Object} partialUser - Fields to merge (e.g. { name, email })
+   */
+  const updateUser = useCallback((partialUser) => {
+    setUser((prev) => (prev ? { ...prev, ...partialUser } : prev));
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -97,9 +107,10 @@ export const AuthProvider = ({ children }) => {
       login,
       register,
       logout,
+      updateUser,
       restoreSession,
     }),
-    [user, token, isLoading, login, register, logout, restoreSession]
+    [user, token, isLoading, login, register, logout, updateUser, restoreSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

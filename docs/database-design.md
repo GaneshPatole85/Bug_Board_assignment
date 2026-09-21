@@ -25,6 +25,11 @@ erDiagram
         string email UK "lowercase, validated"
         string passwordHash "bcrypt cost 12, select:false, stripped in toJSON"
         string role "Admin | Developer | Tester"
+        string employeeId UK "sparse, regex ^EMP-\\d{4,}$"
+        string designation "max:100"
+        string phone "max:20"
+        string avatarUrl "URL string"
+        boolean isActive "default:true, indexed"
         date createdAt
         date updatedAt
     }
@@ -114,6 +119,8 @@ Per project guidelines, speculative indexing is strictly avoided. Indexes are cr
 | Collection | Field(s) | Type | Justification / Query Pattern |
 | :--- | :--- | :--- | :--- |
 | `users` | `email` | Unique Single-Field | Enforces unique email constraint for user authentication and optimizes login lookups (`findOne({ email })`). |
+| `users` | `employeeId` | Sparse Unique Single-Field | Enforces unique employee ID constraint across organization while permitting legacy/unassigned records (`sparse: true, unique: true`). |
+| `users` | `isActive` | Single-Field (`1`) | Optimizes authentication status lookups and user management filtering. |
 | `projects` | `key` | Unique Single-Field | Enforces unique project keys (e.g. `BUG`, `PROJ`) for Jira-style issue identifiers and lookup. |
 | `issues` | `project` | Single-Field (`1`) | **Assignment Requirement**: Search and filter by `project`. Essential for retrieving all issues in a project. |
 | `issues` | `status` | Single-Field (`1`) | **Assignment Requirement**: Search and filter by `status` (Open, In Progress, etc.) and dashboard status aggregations. |
@@ -138,6 +145,11 @@ Per project guidelines, speculative indexing is strictly avoided. Indexes are cr
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, match: /^\S+@\S+\.\S+$/ },
   passwordHash: { type: String, required: true, select: false }, // Hashed with bcrypt cost 12 on pre-save
   role: { type: String, required: true, enum: ['Admin', 'Developer', 'Tester'], default: 'Developer' },
+  employeeId: { type: String, unique: true, sparse: true, trim: true, uppercase: true, match: /^EMP-\d{4,}$/ },
+  designation: { type: String, trim: true, maxlength: 100, default: '' },
+  phone: { type: String, trim: true, maxlength: 20, default: '' },
+  avatarUrl: { type: String, trim: true, default: '' },
+  isActive: { type: Boolean, default: true, index: true },
   timestamps: true,
   // Serialization security transforms:
   toJSON: { transform: (doc, ret) => { delete ret.passwordHash; delete ret.__v; return ret; } },

@@ -2,6 +2,7 @@ import { Comment } from '../models/Comment.js';
 import { Issue } from '../models/Issue.js';
 import { Project } from '../models/Project.js';
 import { ROLES } from '../constants/roles.js';
+import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 
 class CommentService {
   /**
@@ -12,32 +13,24 @@ class CommentService {
   async _verifyIssueAndProjectAccess(issueId, user) {
     const issue = await Issue.findById(issueId).select('_id project');
     if (!issue) {
-      const error = new Error('Issue not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Issue not found');
     }
 
     if (user.role !== ROLES.ADMIN) {
       if (!issue.project) {
-        const error = new Error('Project associated with this issue is unavailable');
-        error.statusCode = 404;
-        throw error;
+        throw new NotFoundError('Project associated with this issue is unavailable');
       }
 
       const project = await Project.findById(issue.project).select('members');
       if (!project) {
-        const error = new Error('Project not found');
-        error.statusCode = 404;
-        throw error;
+        throw new NotFoundError('Project not found');
       }
 
       const userIdStr = user.id.toString();
       const isMember = (project.members || []).some((mId) => mId.toString() === userIdStr);
 
       if (!isMember) {
-        const error = new Error('Forbidden: You do not have access to this project');
-        error.statusCode = 403;
-        throw error;
+        throw new ForbiddenError('Forbidden: You do not have access to this project');
       }
     }
 

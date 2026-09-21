@@ -3,6 +3,7 @@ import apiClient from '../api/client.js';
 import { Modal } from './ui/Modal.jsx';
 import { Button } from './ui/Button.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { applyApiErrorsToForm } from '../utils/apiErrors.js';
 import './IssueForm.css';
 
 const SEVERITY_LIST = ['Low', 'Medium', 'High', 'Critical'];
@@ -135,12 +136,8 @@ export const IssueForm = ({
       onSuccess();
       onClose();
     } catch (err) {
-      if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
-        setFieldErrors(err.fieldErrors);
-        setErrorMsg('Please fix the errors highlighted below.');
-      } else {
-        setErrorMsg(err.message || 'Failed to create issue. Please check your inputs and try again.');
-      }
+      // Map server-returned field errors (e.g. assignee errors) to inline display
+      applyApiErrorsToForm(err, setFieldErrors, setErrorMsg);
     } finally {
       setIsSubmitting(false);
     }

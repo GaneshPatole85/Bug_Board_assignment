@@ -199,6 +199,18 @@
   letter-spacing: 0.03em;
 }
 
+.inactive-user-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background-color: rgba(140, 149, 159, 0.2);
+  color: var(--color-slate, #6e7781);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border);
+  letter-spacing: 0.03em;
+}
+
 .member-email {
   font-size: 0.78rem;
   color: var(--color-slate);

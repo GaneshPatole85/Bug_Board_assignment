@@ -38,6 +38,17 @@
   border-color: var(--border-default);
 }
 
+.member-select-item.inactive-member {
+  opacity: 0.65;
+}
+
+.inactive-badge-tag {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-slate);
+  margin-left: 4px;
+}
+
 .member-info {
   display: flex;
   justify-content: space-between;

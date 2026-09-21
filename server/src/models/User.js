@@ -33,6 +33,38 @@ const userSchema = new mongoose.Schema(
       },
       default: ROLES.DEVELOPER,
     },
+    employeeId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      match: [/^[A-Za-z0-9_-]{3,20}$/, 'Employee ID must be 3-20 characters long (letters, numbers, hyphens, underscores)'],
+    },
+    department: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Department cannot exceed 100 characters'],
+    },
+    designation: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Designation cannot exceed 100 characters'],
+    },
+    phone: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'Phone cannot exceed 20 characters'],
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
+      match: [/^https?:\/\/.+$/, 'Avatar URL must be a valid HTTP or HTTPS URL'],
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
   },
   {
     timestamps: true,

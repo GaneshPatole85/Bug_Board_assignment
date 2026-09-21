@@ -3,6 +3,7 @@ import apiClient from '../api/client.js';
 import { Modal } from './ui/Modal.jsx';
 import { Button } from './ui/Button.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { applyApiErrorsToForm } from '../utils/apiErrors.js';
 import './ProjectForm.css';
 
 const PROJECT_KEY_REGEX = /^[A-Z0-9][A-Z0-9-]{0,8}[A-Z0-9]$|^[A-Z0-9]{1}$/;
@@ -154,13 +155,8 @@ export const ProjectForm = ({
       onSuccess();
       onClose();
     } catch (err) {
-      // Merge server-returned field errors into the inline display
-      if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
-        setFieldErrors(err.fieldErrors);
-        setErrorMsg('Please fix the errors highlighted below.');
-      } else {
-        setErrorMsg(err.message || 'Operation failed. Please check your inputs and try again.');
-      }
+      // Map server-returned field errors (e.g. duplicate key) to inline display
+      applyApiErrorsToForm(err, setFieldErrors, setErrorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -298,25 +294,30 @@ export const ProjectForm = ({
             </div>
           ) : (
             <div className="members-select-list">
-              {availableUsers.map((user) => {
-                const isSelected = selectedMembers.includes(user._id);
-                return (
-                  <label
-                    key={user._id}
-                    className={`member-select-item ${isSelected ? 'selected' : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleMemberToggle(user._id)}
-                    />
-                    <div className="member-info">
-                      <span className="member-name">{user.name}</span>
-                      <span className="member-role font-mono">{user.role}</span>
-                    </div>
-                  </label>
-                );
-              })}
+              {availableUsers
+                .filter((u) => u.isActive !== false || selectedMembers.includes(u._id))
+                .map((user) => {
+                  const isSelected = selectedMembers.includes(user._id);
+                  const isInactive = user.isActive === false;
+                  return (
+                    <label
+                      key={user._id}
+                      className={`member-select-item ${isSelected ? 'selected' : ''} ${isInactive ? 'inactive-member' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleMemberToggle(user._id)}
+                      />
+                      <div className="member-info">
+                        <span className="member-name">
+                          {user.name} {isInactive && <span className="inactive-badge-tag">(Inactive)</span>}
+                        </span>
+                        <span className="member-role font-mono">{user.role}</span>
+                      </div>
+                    </label>
+                  );
+                })}
             </div>
           )}
           {selectedMembers.length > 0 && (

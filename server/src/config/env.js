@@ -21,6 +21,12 @@ export const env = {
   // Phase 2 JWT Authentication
   JWT_SECRET: process.env.JWT_SECRET || 'bugboard-dev-super-secret-jwt-key-min-32-chars',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1d',
+  // Administrator Configuration (.env driven)
+  ADMIN_NAME: process.env.ADMIN_NAME || 'Admin User',
+  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || 'admin@bugboard.test').toLowerCase().trim(),
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'Password123!',
+  ADMIN_EMPLOYEE_ID: process.env.ADMIN_EMPLOYEE_ID || 'ADM-0001',
+  ADMIN_DEPARTMENT: process.env.ADMIN_DEPARTMENT || 'Platform Operations',
   isProduction: process.env.NODE_ENV === 'production',
   isDevelopment: process.env.NODE_ENV === 'development' || !process.env.NODE_ENV,
   isTest: process.env.NODE_ENV === 'test',

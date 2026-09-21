@@ -6,6 +6,8 @@ import { body } from 'express-validator';
  */
 export const registerValidator = [
   body('name')
+    .isString()
+    .withMessage('Name must be a string')
     .trim()
     .notEmpty()
     .withMessage('Name is required')

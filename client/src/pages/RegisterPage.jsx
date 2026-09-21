@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { applyApiErrorsToForm } from '../utils/apiErrors.js';
 import './RegisterPage.css';
 
 export const RegisterPage = () => {
@@ -9,45 +10,54 @@ export const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('Developer');
+  // Top-level error banner
   const [error, setError] = useState(null);
+  // Per-field inline errors
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  const clearFieldError = (field) => {
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
 
+    // Client-side validation — match backend rules exactly
+    const errs = {};
     if (!name.trim()) {
-      setError('Full name is required.');
-      return;
-    }
-    if (name.trim().length < 2) {
-      setError('Full name must be at least 2 characters.');
-      return;
+      errs.name = 'Full name is required.';
+    } else if (name.trim().length < 2) {
+      errs.name = 'Full name must be at least 2 characters.';
+    } else if (name.trim().length > 100) {
+      errs.name = 'Full name cannot exceed 100 characters.';
     }
 
     if (!email.trim()) {
-      setError('Email address is required.');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      setError('Please enter a valid email address (e.g. name@company.com).');
-      return;
+      errs.email = 'Email address is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errs.email = 'Please enter a valid email address (e.g. name@company.com).';
     }
 
     if (!password) {
-      setError('Password is required.');
-      return;
+      errs.password = 'Password is required.';
+    } else if (password.length < 8) {
+      errs.password = 'Password must be at least 8 characters long.';
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return;
+
+    if (password && password !== confirmPassword) {
+      errs.confirmPassword = 'Passwords do not match. Please re-enter your password.';
     }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match. Please re-enter your password.');
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
 
@@ -59,7 +69,8 @@ export const RegisterPage = () => {
         state: { message: 'Account created successfully! Please sign in with your credentials.' },
       });
     } catch (err) {
-      setError(err.message || 'Registration failed. Please check your inputs and try again.');
+      // Map backend field errors (e.g. duplicate email → email field) to inline display
+      applyApiErrorsToForm(err, setFieldErrors, setError);
     } finally {
       setIsSubmitting(false);
     }
@@ -80,42 +91,53 @@ export const RegisterPage = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} id="register-form" className="register-form">
-        <div className="form-group">
+      <form onSubmit={handleSubmit} id="register-form" className="register-form" noValidate>
+        <div className={`form-group ${fieldErrors.name ? 'field-error' : ''}`}>
           <label htmlFor="register-name" className="form-label">
             Full name
           </label>
           <input
             id="register-name"
             type="text"
-            className="form-input"
+            className={`form-input ${fieldErrors.name ? 'input-invalid' : ''}`}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
             placeholder="e.g. Alex Morgan"
-            required
-            minLength={2}
             maxLength={100}
             autoComplete="name"
+            aria-invalid={Boolean(fieldErrors.name)}
+            aria-describedby={fieldErrors.name ? 'register-name-error' : undefined}
           />
+          {fieldErrors.name && (
+            <span className="field-error-msg" id="register-name-error" role="alert">
+              ⚠ {fieldErrors.name}
+            </span>
+          )}
         </div>
 
-        <div className="form-group">
+        <div className={`form-group ${fieldErrors.email ? 'field-error' : ''}`}>
           <label htmlFor="register-email" className="form-label">
             Email address
           </label>
           <input
             id="register-email"
             type="email"
-            className="form-input"
+            className={`form-input ${fieldErrors.email ? 'input-invalid' : ''}`}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
             placeholder="name@company.com"
-            required
             autoComplete="email"
+            aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? 'register-email-error' : undefined}
           />
+          {fieldErrors.email && (
+            <span className="field-error-msg" id="register-email-error" role="alert">
+              ⚠ {fieldErrors.email}
+            </span>
+          )}
         </div>
 
-        <div className="form-group">
+        <div className={`form-group ${fieldErrors.role ? 'field-error' : ''}`}>
           <label htmlFor="register-role" className="form-label">
             Workspace role
           </label>
@@ -125,46 +147,58 @@ export const RegisterPage = () => {
             value={role}
             onChange={(e) => setRole(e.target.value)}
           >
-            <option value="Developer">Developer (Issue assignment & implementation)</option>
-            <option value="Tester">Tester (Bug reporting & QA verification)</option>
+            <option value="Developer">Developer (Issue assignment &amp; implementation)</option>
+            <option value="Tester">Tester (Bug reporting &amp; QA verification)</option>
           </select>
           <span className="form-hint">
             Admin accounts are provisioned via system seeders for security.
           </span>
         </div>
 
-        <div className="form-group">
+        <div className={`form-group ${fieldErrors.password ? 'field-error' : ''}`}>
           <label htmlFor="register-password" className="form-label">
             Password (min. 8 characters)
           </label>
           <input
             id="register-password"
             type="password"
-            className="form-input"
+            className={`form-input ${fieldErrors.password ? 'input-invalid' : ''}`}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
             placeholder="••••••••"
-            required
             minLength={8}
             autoComplete="new-password"
+            aria-invalid={Boolean(fieldErrors.password)}
+            aria-describedby={fieldErrors.password ? 'register-password-error' : undefined}
           />
+          {fieldErrors.password && (
+            <span className="field-error-msg" id="register-password-error" role="alert">
+              ⚠ {fieldErrors.password}
+            </span>
+          )}
         </div>
 
-        <div className="form-group">
+        <div className={`form-group ${fieldErrors.confirmPassword ? 'field-error' : ''}`}>
           <label htmlFor="register-confirm-password" className="form-label">
             Confirm password
           </label>
           <input
             id="register-confirm-password"
             type="password"
-            className="form-input"
+            className={`form-input ${fieldErrors.confirmPassword ? 'input-invalid' : ''}`}
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError('confirmPassword'); }}
             placeholder="••••••••"
-            required
             minLength={8}
             autoComplete="new-password"
+            aria-invalid={Boolean(fieldErrors.confirmPassword)}
+            aria-describedby={fieldErrors.confirmPassword ? 'register-confirm-error' : undefined}
           />
+          {fieldErrors.confirmPassword && (
+            <span className="field-error-msg" id="register-confirm-error" role="alert">
+              ⚠ {fieldErrors.confirmPassword}
+            </span>
+          )}
         </div>
 
         <button

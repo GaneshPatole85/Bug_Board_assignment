@@ -1,15 +1,33 @@
+import { User } from '../models/User.js';
 import { verifyToken } from '../utils/jwt.js';
 import { logger } from '../utils/logger.js';
 
 /**
  * Authentication Middleware.
- * Reads Authorization header, verifies JWT, and attaches user { id, role } to req.user.
- * Logs specific error causes while returning a safe, generic 401 response to callers.
+ * Reads Authorization header, verifies JWT, validates active account status from DB,
+ * and attaches user { id, role } to req.user.
+ * Logs specific error causes while returning safe, structured 401 responses.
  */
-export const authenticate = (req, res, next) => {
+export const authenticate = async (req, res, next) => {
+  let token = null;
   const authHeader = req.headers.authorization;
 
-  if (!authHeader) {
+  if (authHeader) {
+    const parts = authHeader.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+      logger.warn({ ip: req.ip, path: req.originalUrl }, 'Auth failure: Malformed Authorization header format');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: Invalid token format',
+        errors: [],
+      });
+    }
+    token = parts[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
     logger.warn({ ip: req.ip, path: req.originalUrl }, 'Auth failure: Missing Authorization header');
     return res.status(401).json({
       success: false,
@@ -18,25 +36,33 @@ export const authenticate = (req, res, next) => {
     });
   }
 
-  const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    logger.warn({ ip: req.ip, path: req.originalUrl }, 'Auth failure: Malformed Authorization header format');
-    return res.status(401).json({
-      success: false,
-      message: 'Unauthorized: Invalid token format',
-      errors: [],
-    });
-  }
-
-  const token = parts[1];
-
   try {
     const decoded = verifyToken(token);
 
-    // Minimal claims attached to req.user (no PII)
+    // Look up user status in database to immediately enforce deactivations
+    const userDoc = await User.findById(decoded.sub).select('role isActive').lean();
+    if (!userDoc) {
+      logger.warn({ ip: req.ip, path: req.originalUrl, userId: decoded.sub }, 'Auth failure: User account no longer exists');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: User account no longer exists',
+        errors: [],
+      });
+    }
+
+    if (userDoc.isActive === false) {
+      logger.warn({ ip: req.ip, path: req.originalUrl, userId: decoded.sub }, 'Auth failure: Deactivated account access attempt');
+      return res.status(401).json({
+        success: false,
+        message: 'Your account has been deactivated. Contact an administrator.',
+        errors: [],
+      });
+    }
+
+    // Minimal claims attached to req.user
     req.user = {
       id: decoded.sub,
-      role: decoded.role,
+      role: userDoc.role || decoded.role,
     };
 
     next();

@@ -1260,3 +1260,284 @@ describe('B39 — Timing side-channel eliminated via constant-time bcrypt compar
   });
 });
 
+// ─── RUN 2 TESTS (B40–B47) ───────────────────────────────────────────────────
+
+describe('B40 — User Profile & Email Self-Edit Adversarial', () => {
+  test('B40-a: Empty email rejected with 422', async () => {
+    const res = await request(app)
+      .patch('/api/v1/users/me')
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ email: '' });
+    expect(res.status).toBe(422);
+  });
+
+  test('B40-b: Invalid email format rejected with 422', async () => {
+    const res = await request(app)
+      .patch('/api/v1/users/me')
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ email: 'notanemail' });
+    expect(res.status).toBe(422);
+  });
+
+  test('B40-c: Duplicate email rejected with 409 Conflict', async () => {
+    const res = await request(app)
+      .patch('/api/v1/users/me')
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ email: 'admin@example.com' });
+    expect(res.status).toBe(409);
+  });
+
+  test('B40-d: Same email update is idempotent (200 OK)', async () => {
+    const res = await request(app)
+      .patch('/api/v1/users/me')
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ email: devUser.email });
+    expect(res.status).toBe(200);
+  });
+
+  test('B40-e: Mass-assignment of administrative fields rejected with 422', async () => {
+    for (const field of ['role', 'isActive', 'employeeId', 'department']) {
+      const res = await request(app)
+        .patch('/api/v1/users/me')
+        .set('Authorization', `Bearer ${devToken}`)
+        .send({ [field]: 'escalation_value' });
+      expect(res.status).toBe(422);
+    }
+  });
+
+  test('B40-f: Avatar URL dangerous protocols (javascript, data, ftp) rejected with 422', async () => {
+    for (const avatarUrl of ['javascript:alert(1)', 'data:text/html,xss', 'ftp://example.com/pic.png']) {
+      const res = await request(app)
+        .patch('/api/v1/users/me')
+        .set('Authorization', `Bearer ${devToken}`)
+        .send({ avatarUrl });
+      expect(res.status).toBe(422);
+    }
+  });
+
+  test('B40-g: Type confusion on profile update (object name/phone) rejected with 422', async () => {
+    const res1 = await request(app)
+      .patch('/api/v1/users/me')
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ name: { evil: 'obj' } });
+    expect(res1.status).toBe(422);
+
+    const res2 = await request(app)
+      .patch('/api/v1/users/me')
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ phone: { evil: 'obj' } });
+    expect(res2.status).toBe(422);
+  });
+});
+
+describe('B41 — Admin User Management & Immutability (ADR 05 & ADR 06)', () => {
+  test('B41-a: Non-admins blocked from GET /users/:id with 403', async () => {
+    const res = await request(app)
+      .get(`/api/v1/users/${testerUser._id}`)
+      .set('Authorization', `Bearer ${devToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('B41-b: Admin self-edit blanket prohibition enforced with 403', async () => {
+    const res = await request(app)
+      .patch(`/api/v1/users/${adminUser._id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ department: 'Executive' });
+    expect(res.status).toBe(403);
+  });
+
+  test('B41-c: Admin attempt to edit employeeId is silently ignored and value preserved (ADR 06)', async () => {
+    const originalEmpId = devUser.employeeId;
+    const res = await request(app)
+      .patch(`/api/v1/users/${devUser._id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ employeeId: 'HACKED-9999', department: 'Engineering' });
+    expect(res.status).toBe(200);
+
+    const updatedDev = await User.findById(devUser._id);
+    expect(updatedDev.employeeId).toBe(originalEmpId);
+    expect(updatedDev.department).toBe('Engineering');
+  });
+});
+
+describe('B42 — Comments Input Validation, Type Confusion & Cross-Project IDOR', () => {
+  test('B42-a: Empty comment content rejected with 422', async () => {
+    const issue = await createIssue();
+    const res = await request(app)
+      .post(`/api/v1/issues/${issue._id}/comments`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ content: '' });
+    expect(res.status).toBe(422);
+  });
+
+  test('B42-b: Oversized comment content (>2000 chars) rejected with 422', async () => {
+    const issue = await createIssue();
+    const res = await request(app)
+      .post(`/api/v1/issues/${issue._id}/comments`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ content: 'A'.repeat(2001) });
+    expect(res.status).toBe(422);
+  });
+
+  test('B42-c: Type confusion on comment creation (object content) rejected with 422', async () => {
+    const issue = await createIssue();
+    const res = await request(app)
+      .post(`/api/v1/issues/${issue._id}/comments`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ content: { nested: 'evil' } });
+    expect(res.status).toBe(422);
+  });
+
+  test('B42-d: Author spoofing ignored; author forced to authenticated user', async () => {
+    const issue = await createIssue();
+    const res = await request(app)
+      .post(`/api/v1/issues/${issue._id}/comments`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ content: 'Legit comment', author: adminUser._id.toString() });
+    expect(res.status).toBe(201);
+    const commentAuthorId = res.body.data.author._id || res.body.data.author;
+    expect(commentAuthorId.toString()).toBe(devUser._id.toString());
+  });
+
+  test('B42-e: Cross-project comment posting blocked with 403 Forbidden', async () => {
+    // Create issue in project2 where devUser is an outsider
+    const secretIssue = await Issue.create({
+      title: 'Secret Issue',
+      description: 'Secret',
+      project: project2._id,
+      severity: ISSUE_SEVERITY.HIGH,
+      priority: ISSUE_PRIORITY.HIGH,
+      status: ISSUE_STATUS.OPEN,
+      reporter: adminUser._id,
+    });
+
+    const resPost = await request(app)
+      .post(`/api/v1/issues/${secretIssue._id}/comments`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({ content: 'Intruder comment' });
+    expect(resPost.status).toBe(403);
+
+    const resGet = await request(app)
+      .get(`/api/v1/issues/${secretIssue._id}/comments`)
+      .set('Authorization', `Bearer ${devToken}`);
+    expect(resGet.status).toBe(403);
+  });
+});
+
+describe('B43 — Notifications Scoping & Cross-User IDOR', () => {
+  test('B43-a: Cross-user notification mark-read returns 404 Not Found', async () => {
+    const issue = await createIssue();
+    // Tester assigns issue to devUser, generating a notification for devUser
+    await request(app)
+      .patch(`/api/v1/issues/${issue._id}/assignee`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ assignee: devUser._id.toString() });
+
+    const devNotifsRes = await request(app)
+      .get('/api/v1/notifications')
+      .set('Authorization', `Bearer ${devToken}`);
+    expect(devNotifsRes.status).toBe(200);
+    const notifs = devNotifsRes.body.data.data || devNotifsRes.body.data;
+    expect(notifs.length).toBeGreaterThan(0);
+    const targetNotifId = notifs[0]._id;
+
+    // Tester attempts to mark Dev notification as read (Cross-user IDOR)
+    const intruderRes = await request(app)
+      .patch(`/api/v1/notifications/${targetNotifId}/read`)
+      .set('Authorization', `Bearer ${testerToken}`);
+    expect(intruderRes.status).toBe(404);
+  });
+});
+
+describe('B44 — Issue Deletion RBAC', () => {
+  test('B44-a: Non-reporter member blocked from deleting issue with 403', async () => {
+    const issue = await createIssue({ reporter: devUser._id });
+    const res = await request(app)
+      .delete(`/api/v1/issues/${issue._id}`)
+      .set('Authorization', `Bearer ${testerToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('B44-b: Reporter can delete own issue (200 OK)', async () => {
+    const issue = await createIssue({ reporter: devUser._id });
+    const res = await request(app)
+      .delete(`/api/v1/issues/${issue._id}`)
+      .set('Authorization', `Bearer ${devToken}`);
+    expect(res.status).toBe(200);
+  });
+
+  test('B44-c: Admin can delete any issue (200 OK)', async () => {
+    const issue = await createIssue({ reporter: devUser._id });
+    const res = await request(app)
+      .delete(`/api/v1/issues/${issue._id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('B45 — Project Deletion RBAC & Type Confusion on Project/Auth', () => {
+  test('B45-a: Non-admin cannot delete project (403 Forbidden)', async () => {
+    const res = await request(app)
+      .delete(`/api/v1/projects/${project._id}`)
+      .set('Authorization', `Bearer ${devToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('B45-b: Type confusion on project creation (object name) rejected with 422', async () => {
+    const res = await request(app)
+      .post('/api/v1/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: { evil: 'name' }, key: 'TCPROJ' });
+    expect(res.status).toBe(422);
+  });
+
+  test('B45-c: Type confusion on user registration (object name) rejected with 422', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ name: { evil: 'name' }, email: 'tc_user@example.com', password: 'Password123!', role: 'Developer' });
+    expect(res.status).toBe(422);
+  });
+});
+
+describe('B46 — Immediate Token Cutoff for Deactivated Users (ADR 04)', () => {
+  test('B46: Deactivated user token immediately returns 401 Unauthorized', async () => {
+    const victim = await User.create({
+      name: 'Victim User',
+      email: 'victim@example.com',
+      passwordHash: 'Password123!',
+      role: ROLES.DEVELOPER,
+      isActive: true,
+    });
+    const victimToken = signToken(victim);
+
+    // Deactivate user
+    await User.findByIdAndUpdate(victim._id, { isActive: false });
+
+    // Subsequent request must immediately fail with 401
+    const res = await request(app)
+      .get('/api/v1/users/me')
+      .set('Authorization', `Bearer ${victimToken}`);
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/deactivated/i);
+  });
+});
+
+describe('B47 — Attachments Scoping & Cross-Project IDOR', () => {
+  test('B47: Non-member cannot list attachments on foreign project issue (403 Forbidden)', async () => {
+    const secretIssue = await Issue.create({
+      title: 'Secret Attachment Issue',
+      description: 'Secret',
+      project: project2._id,
+      severity: ISSUE_SEVERITY.LOW,
+      priority: ISSUE_PRIORITY.LOW,
+      status: ISSUE_STATUS.OPEN,
+      reporter: adminUser._id,
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/issues/${secretIssue._id}/attachments`)
+      .set('Authorization', `Bearer ${devToken}`);
+    expect(res.status).toBe(403);
+  });
+});
+

@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { Notification } from '../models/Notification.js';
+import { NotFoundError } from '../utils/errors.js';
 import { User } from '../models/User.js';
 import { logger } from '../utils/logger.js';
 
@@ -197,9 +198,7 @@ class NotificationService {
       { new: true }
     );
     if (!notification) {
-      const error = new Error('Notification not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Notification not found');
     }
     return notification;
   }

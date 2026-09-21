@@ -48,6 +48,7 @@ export const IssuesPage = () => {
     priority: searchParams.get('priority') || '',
     severity: searchParams.get('severity') || '',
     assignee: searchParams.get('assignee') || '',
+    reporter: searchParams.get('reporter') || '',
   });
 
   // Modals & Drawers
@@ -62,6 +63,7 @@ export const IssuesPage = () => {
     if (filters.priority) nextParams.set('priority', filters.priority);
     if (filters.severity) nextParams.set('severity', filters.severity);
     if (filters.assignee) nextParams.set('assignee', filters.assignee);
+    if (filters.reporter) nextParams.set('reporter', filters.reporter);
     setSearchParams(nextParams, { replace: true });
   }, [filters, setSearchParams]);
 
@@ -97,6 +99,7 @@ export const IssuesPage = () => {
       if (filters.priority) params.append('priority', filters.priority);
       if (filters.severity) params.append('severity', filters.severity);
       if (filters.assignee) params.append('assignee', filters.assignee);
+      if (filters.reporter) params.append('reporter', filters.reporter);
       if (searchQuery.trim()) params.append('search', searchQuery.trim());
 
       const res = await apiClient.get(`/issues?${params.toString()}`);
@@ -132,6 +135,7 @@ export const IssuesPage = () => {
       priority: '',
       severity: '',
       assignee: '',
+      reporter: '',
     });
     setSearchQuery('');
     setPage(1);
@@ -185,6 +189,7 @@ export const IssuesPage = () => {
     filters.priority ||
     filters.severity ||
     filters.assignee ||
+    filters.reporter ||
     searchQuery.trim()
   );
 
@@ -428,6 +433,23 @@ export const IssuesPage = () => {
                 className="pill-remove-btn"
                 onClick={() => handleFilterChange({ ...filters, assignee: '' })}
                 title="Remove assignee filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {filters.reporter && (
+            <span className="active-filter-pill">
+              Reporter:{' '}
+              <strong>
+                {users.find((u) => u._id === filters.reporter)?.name || 'Selected'}
+              </strong>
+              <button
+                type="button"
+                className="pill-remove-btn"
+                onClick={() => handleFilterChange({ ...filters, reporter: '' })}
+                title="Remove reporter filter"
               >
                 ✕
               </button>

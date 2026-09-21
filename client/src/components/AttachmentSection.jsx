@@ -94,10 +94,31 @@ export const AttachmentSection = ({ issueId }) => {
     }
   };
 
-  const handleDownload = (attachment) => {
-    // Direct link to download endpoint
-    const baseURL = apiClient.defaults.baseURL || '/api/v1';
-    window.open(`${baseURL}/attachments/${attachment._id}/download`, '_blank');
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  const handleDownload = async (attachment) => {
+    if (!attachment?._id) return;
+    try {
+      setDownloadingId(attachment._id);
+      const res = await apiClient.get(`/attachments/${attachment._id}/download`, {
+        responseType: 'blob',
+      });
+      // apiClient response interceptor already returns response.data, so res is the Blob
+      const blob = res instanceof Blob ? res : new Blob([res?.data || res], { type: attachment.mimeType || 'application/octet-stream' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = attachment.originalFilename || 'attachment';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      addToast(`Downloaded ${attachment.originalFilename}`, 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to download attachment', 'error');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (

@@ -6,7 +6,10 @@ import './LoginPage.css';
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Top-level form error banner
   const [error, setError] = useState(null);
+  // Per-field inline errors
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { login } = useAuth();
@@ -17,21 +20,29 @@ export const LoginPage = () => {
   const from = location.state?.from?.pathname || '/dashboard';
   const registerSuccessMsg = location.state?.message;
 
+  const clearFieldError = (field) => {
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
 
+    // Client-side validation
+    const errs = {};
     if (!email.trim()) {
-      setError('Email address is required.');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      setError('Please enter a valid email address (e.g. name@company.com).');
-      return;
+      errs.email = 'Email address is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errs.email = 'Please enter a valid email address (e.g. name@company.com).';
     }
     if (!password) {
-      setError('Password is required.');
+      errs.password = 'Password is required.';
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
 
@@ -40,7 +51,19 @@ export const LoginPage = () => {
       await login({ email: email.trim(), password });
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid email or password. Please check your credentials.');
+      // Map backend field errors (e.g. { field: 'auth', message: ... }) to banner
+      const apiErrors = Array.isArray(err?.errors) ? err.errors : [];
+      const fieldMap = {};
+      apiErrors.forEach((e) => {
+        if (e.field && e.field !== 'auth') {
+          fieldMap[e.field] = e.message;
+        }
+      });
+      if (Object.keys(fieldMap).length > 0) {
+        setFieldErrors(fieldMap);
+      } else {
+        setError(err.message || 'Invalid email or password. Please check your credentials.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -50,6 +73,7 @@ export const LoginPage = () => {
     setEmail(demoEmail);
     setPassword(demoPassword);
     setError(null);
+    setFieldErrors({});
   };
 
   return (
@@ -71,37 +95,49 @@ export const LoginPage = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} id="login-form" className="auth-form">
-        <div className="form-group">
+      <form onSubmit={handleSubmit} id="login-form" className="auth-form" noValidate>
+        <div className={`form-group ${fieldErrors.email ? 'field-error' : ''}`}>
           <label htmlFor="login-email" className="form-label">
             Email address
           </label>
           <input
             id="login-email"
             type="email"
-            className="form-input"
+            className={`form-input ${fieldErrors.email ? 'input-invalid' : ''}`}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
             placeholder="name@company.com"
-            required
             autoComplete="email"
+            aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
           />
+          {fieldErrors.email && (
+            <span className="field-error-msg" id="login-email-error" role="alert">
+              ⚠ {fieldErrors.email}
+            </span>
+          )}
         </div>
 
-        <div className="form-group">
+        <div className={`form-group ${fieldErrors.password ? 'field-error' : ''}`}>
           <label htmlFor="login-password" className="form-label">
             Password
           </label>
           <input
             id="login-password"
             type="password"
-            className="form-input"
+            className={`form-input ${fieldErrors.password ? 'input-invalid' : ''}`}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
             placeholder="••••••••"
-            required
             autoComplete="current-password"
+            aria-invalid={Boolean(fieldErrors.password)}
+            aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
           />
+          {fieldErrors.password && (
+            <span className="field-error-msg" id="login-password-error" role="alert">
+              ⚠ {fieldErrors.password}
+            </span>
+          )}
         </div>
 
         <button

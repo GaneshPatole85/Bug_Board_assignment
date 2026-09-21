@@ -9,6 +9,8 @@ export const createCommentValidator = [
     .withMessage('Invalid issue ID format'),
 
   body('content')
+    .isString()
+    .withMessage('Comment content must be a string')
     .trim()
     .notEmpty()
     .withMessage('Comment content is required')

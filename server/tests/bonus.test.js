@@ -331,6 +331,26 @@ describe('Bonus Features: Kanban, Notifications, and Attachments', () => {
       expect(downloadRes.body.toString()).toBe('sample-png-content-for-download');
     });
 
+    test('Downloading attachment via query param token (?token=...) succeeds for authorized user', async () => {
+      const pngBuffer = Buffer.from('query-token-test-content');
+
+      const uploadRes = await request(app)
+        .post(`/api/v1/issues/${issueA._id}/attachments`)
+        .set('Authorization', `Bearer ${devToken}`)
+        .attach('file', pngBuffer, 'query-diagram.png');
+
+      expect(uploadRes.status).toBe(201);
+      const attachmentId = uploadRes.body.data._id;
+
+      // Download using ?token= query parameter without Authorization header
+      const downloadRes = await request(app)
+        .get(`/api/v1/attachments/${attachmentId}/download?token=${testerToken}`);
+
+      expect(downloadRes.status).toBe(200);
+      expect(downloadRes.headers['content-type']).toBe('image/png');
+      expect(downloadRes.body.toString()).toBe('query-token-test-content');
+    });
+
     test('Downloading attachment by non-project member receives 403 Forbidden', async () => {
       const pngBuffer = Buffer.from('sample-png-content');
 

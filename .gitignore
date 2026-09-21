@@ -5,12 +5,14 @@ node_modules/
 
 # Environment Variables & Secrets
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 *.pem
 *.key
+
+# User Uploads
+server/uploads/*
+!server/uploads/.gitkeep
 
 # Production & Build Outputs
 dist/

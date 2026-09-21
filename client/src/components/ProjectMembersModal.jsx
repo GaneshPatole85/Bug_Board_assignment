@@ -136,6 +136,9 @@ export const ProjectMembersModal = ({
                     <div className="member-details">
                       <div className="member-name-line">
                         <span className="member-name">{member.name || 'Unnamed Member'}</span>
+                        {member.isActive === false && (
+                          <span className="inactive-user-badge">Inactive</span>
+                        )}
                         {isCurrentUser && (
                           <span className="current-user-badge">You</span>
                         )}

@@ -4,12 +4,18 @@ import { Issue } from '../models/Issue.js';
 import { Comment } from '../models/Comment.js';
 import { Activity } from '../models/Activity.js';
 import { ROLES } from '../constants/roles.js';
+import {
+  ConflictError,
+  ValidationError,
+  NotFoundError,
+  ForbiddenError,
+} from '../utils/errors.js';
 
 class ProjectService {
   /**
    * Create a new project (Admin only).
    * Automatically adds the creating Admin to members if not present.
-   * Validates duplicate keys cleanly with 409 Conflict.
+   * Validates duplicate keys cleanly with 409 Conflict and field-level error.
    */
   async createProject(projectData, user) {
     const key = projectData.key.toUpperCase().trim();
@@ -17,9 +23,9 @@ class ProjectService {
     // Enforce unique key check with clean 409 Conflict
     const existing = await Project.findOne({ key });
     if (existing) {
-      const error = new Error(`Project key "${key}" is already in use.`);
-      error.statusCode = 409;
-      throw error;
+      throw new ConflictError(`Project key "${key}" is already in use.`, [
+        { field: 'key', message: `Project key "${key}" is already in use.` },
+      ]);
     }
 
     // Auto-add creating admin to members array
@@ -30,9 +36,9 @@ class ProjectService {
     // Validate that all specified member IDs correspond to active users in DB
     const existingUsers = await User.find({ _id: { $in: memberIds } }).select('_id');
     if (existingUsers.length !== memberIds.length) {
-      const error = new Error('One or more specified member user IDs do not exist.');
-      error.statusCode = 422;
-      throw error;
+      throw new ValidationError('One or more specified member user IDs do not exist.', [
+        { field: 'members', message: 'One or more specified member user IDs do not exist.' },
+      ]);
     }
 
     const project = await Project.create({
@@ -90,9 +96,7 @@ class ProjectService {
   async getProjectById(projectId, user) {
     const project = await Project.findById(projectId).populate('members', 'name email role');
     if (!project) {
-      const error = new Error('Project not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Project not found');
     }
 
     // Access authorization check
@@ -100,9 +104,7 @@ class ProjectService {
       const userIdStr = user.id.toString();
       const isMember = project.members.some((m) => m._id.toString() === userIdStr);
       if (!isMember) {
-        const error = new Error('Forbidden: You do not have access to this project');
-        error.statusCode = 403;
-        throw error;
+        throw new ForbiddenError('Forbidden: You do not have access to this project');
       }
     }
 
@@ -120,9 +122,7 @@ class ProjectService {
   async updateProject(projectId, updateData, user) {
     const project = await Project.findById(projectId);
     if (!project) {
-      const error = new Error('Project not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Project not found');
     }
 
     if (updateData.name) {
@@ -133,9 +133,9 @@ class ProjectService {
     }
     if (updateData.members) {
       if (updateData.members.length === 0) {
-        const error = new Error('Project must have at least one member.');
-        error.statusCode = 422;
-        throw error;
+        throw new ValidationError('Project must have at least one member.', [
+          { field: 'members', message: 'Project must have at least one member.' },
+        ]);
       }
 
       // Ensure updating Admin remains in members list to prevent accidental lockout
@@ -148,9 +148,9 @@ class ProjectService {
       // Validate all provided member IDs exist in DB
       const existingUsers = await User.find({ _id: { $in: memberIds } }).select('_id');
       if (existingUsers.length !== memberIds.length) {
-        const error = new Error('One or more specified member user IDs do not exist.');
-        error.statusCode = 422;
-        throw error;
+        throw new ValidationError('One or more specified member user IDs do not exist.', [
+          { field: 'members', message: 'One or more specified member user IDs do not exist.' },
+        ]);
       }
 
       // Referential integrity: clean up dangling assignees for removed members
@@ -199,9 +199,7 @@ class ProjectService {
   async deleteProject(projectId, user) {
     const project = await Project.findById(projectId);
     if (!project) {
-      const error = new Error('Project not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Project not found');
     }
 
     // Find all issues under this project

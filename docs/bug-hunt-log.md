@@ -31,6 +31,7 @@
 | B37 | Run 1 | Input Validation / Type Confusion | Low | `PATCH /api/v1/issues/:issueId` | Developer / Tester / Admin | In `updateIssueValidator`, `body('title')` lacked `.isString()`. When a nested object payload was sent, express-validator coerced it to `"[object Object]"`, passing validation with 200 OK. | Send `{"title": {"nested": "evil"}}` to general PATCH | `server/tests/deep-hunt.test.js` (`B37`) | Fixed | Run 1 | Added `.isString().withMessage('Issue title must be a string')` to `createIssueValidator` and `updateIssueValidator`. |
 | B38 | Run 1 | Authorization / IDOR Information Leak | Medium | `GET /api/v1/issues` | Developer / Tester | When a user belonged to 0 projects, `GET /api/v1/issues?project=<foreign_id>` returned `200 OK` with `{ data: [] }` instead of `403 Forbidden`. | Remove user from all projects -> Call `GET /issues?project=<foreign_id>` | `server/tests/deep-hunt.test.js` (`B38`) | Fixed | Run 1 | `issue.service.js:getIssues` validates `queryParams.project` authorization prior to 0-projects early return; returns consistent 403 Forbidden. |
 | B39 | Run 1 | Information Disclosure / Cryptographic Timing | Low | `POST /api/v1/auth/login` | Public / Unauthenticated | Unregistered email login returned in ~2ms, while registered email executed `bcrypt.compare` (~250ms), allowing account enumeration. | Benchmark response latency for non-existent vs. existing email | `server/tests/deep-hunt.test.js` (`B39`) | Fixed | Run 1 | `auth.service.js:loginUser` executes dummy bcrypt comparison on invalid emails, equalizing response timing. |
+| B48 | Run 2 | Input Validation / Type Confusion | Low | Mutating Endpoints (`POST /comments`, `POST/PATCH /projects`, `PATCH /users/me`, `POST /auth/register`) | All Roles / Public | String fields (`content`, `name`, `phone`) lacked `.isString()`. When nested object payloads (e.g. `{"content": {"evil": "nested"}}` or `{"name": {"evil": "obj"}}`) were passed, express-validator's `trim()` implicitly coerced the object into `"[object Object]"`, passing validation with 200/201 and storing corrupted data. | Send `{"content": {"evil": "nested"}}` to `POST /api/v1/issues/:id/comments` or `{"name": {"evil": "obj"}}` to `POST /api/v1/projects` | `server/tests/deep-hunt.test.js` (`B40-g`, `B42-c`, `B45-b`, `B45-c`) | Fixed | Run 2 | Added `.isString().withMessage(...)` before `.trim()` across `comment.validators.js`, `project.validators.js`, `user.validators.js`, and `auth.validators.js`. Added `validateTransition` alias in `workflow.service.js`. |
 
 ## Exploit Chains
 
@@ -50,16 +51,21 @@
 
 | Category | Endpoint/Screen | Role | Last Run Tested | Outcome |
 |----------|------------------|------|------------------|---------|
-| Auth | `POST /api/v1/auth/register` | Public | Run 1 | Enforced (Admin self-reg blocked, duplicates rejected) |
-| Auth | `POST /api/v1/auth/login` | Public | Run 1 | Enforced / Fixed (B39 timing leak eliminated) |
-| Auth | `GET /api/v1/auth/me` | Developer / Tester / Admin | Run 1 | Enforced (JWT verification clean, stripped passwords) |
+| Auth | `POST /api/v1/auth/register` | Public | Run 2 | Enforced / Fixed (B48: Object type confusion rejected with 422; Admin self-reg blocked) |
+| Auth | `POST /api/v1/auth/login` | Public | Run 2 | Enforced (B39 timing leak eliminated, deactivated accounts return 401) |
+| Auth | `GET /api/v1/auth/me` | Developer / Tester / Admin | Run 2 | Enforced (Immediate 401 revocation upon account deactivation) |
 | Users | `GET /api/v1/users` | Developer / Tester | Run 1 | Enforced / Fixed (B13: Scoped to project co-members, Admin hidden) |
-| Projects | `POST /api/v1/projects` | Admin | Run 1 | Enforced (Key format, uniqueness, creator auto-added) |
+| Users | `PATCH /api/v1/users/me` | Developer / Tester / Admin | Run 2 | Enforced / Fixed (Email self-edit with 409 collision check; B48 type confusion rejected; dangerous avatar protocols blocked; mass-assignment blocked) |
+| Users | `GET /api/v1/users/:id` | Developer / Tester | Run 2 | Enforced (403 Forbidden for non-admins) |
+| Users | `PATCH /api/v1/users/:id` | Admin (self-edit) | Run 2 | Enforced (403 blanket prohibition per ADR 05) |
+| Users | `PATCH /api/v1/users/:id` | Admin (employeeId) | Run 2 | Enforced (Silently ignored, value immutable per ADR 06) |
+| Projects | `POST /api/v1/projects` | Admin | Run 2 | Enforced / Fixed (B48: Object name type confusion rejected with 422; key validation enforced) |
 | Projects | `POST /api/v1/projects` | Developer / Tester | Run 1 | Enforced (403 Forbidden for non-admins) |
 | Projects | `GET /api/v1/projects` | Developer / Tester / Admin | Run 1 | Enforced (Scoped to project members for non-admins) |
 | Projects | `GET /api/v1/projects/:id` | Member vs Non-member | Run 1 | Enforced (403 for non-members, 200 for members) |
-| Projects | `PATCH /api/v1/projects/:id` | Admin | Run 1 | Enforced / Fixed (B15 admin preserved, B17 empty members rejected, B21 dangling assignees cleaned) |
+| Projects | `PATCH /api/v1/projects/:id` | Admin | Run 2 | Enforced / Fixed (B48: Object name rejected with 422; B15 admin preserved; B17 empty members rejected; B21 dangling assignees cleaned) |
 | Projects | `PATCH /api/v1/projects/:id` | Developer / Tester | Run 1 | Enforced (403 Forbidden for non-admins) |
+| Projects | `DELETE /api/v1/projects/:id` | Admin vs Non-admin | Run 2 | Enforced (Admin deletes cleanly; non-admin blocked with 403; orphaned issues safely return 404) |
 | Issues | `POST /api/v1/issues` | Developer / Tester / Admin | Run 1 | Enforced (Reporter forced to req.user.id, boundaries validated) |
 | Issues | `GET /api/v1/issues` | Non-member (0 projects) | Run 1 | Enforced / Fixed (B38: 403 Forbidden consistently enforced) |
 | Issues | `GET /api/v1/issues` | Member vs Non-member | Run 1 | Enforced (403 on foreign project) |
@@ -72,4 +78,13 @@
 | Issues | `PATCH /api/v1/issues/:id/status` | Non-member | Run 1 | Enforced (403 Forbidden before status check) |
 | Issues | `PATCH /api/v1/issues/:id/assignee`| Member | Run 1 | Enforced / Fixed (B16: Explicit assignee key required, empty body 422) |
 | Issues | `GET /api/v1/issues/:id/activities`| Member vs Non-member | Run 1 | Enforced (403 for non-members) |
+| Issues | `DELETE /api/v1/issues/:id` | Reporter vs Non-reporter vs Admin | Run 2 | Enforced (Reporter and Admin allowed; non-reporter non-admin blocked with 403) |
+| Comments | `POST /api/v1/issues/:id/comments`| Member | Run 2 | Enforced / Fixed (B48: Object type confusion rejected with 422; author forced to authenticated user; 2000 char boundary enforced) |
+| Comments | `POST /api/v1/issues/:id/comments`| Non-member | Run 2 | Enforced (403 Forbidden cross-project IDOR blocked) |
+| Comments | `GET /api/v1/issues/:id/comments` | Member vs Non-member | Run 2 | Enforced (403 for non-members; pagination boundaries limit=0, -1, abc, 99999 rejected with 422) |
+| Notifications | `GET /api/v1/notifications` | Developer / Tester / Admin | Run 2 | Enforced (Strictly scoped to authenticated user) |
+| Notifications | `PATCH /api/v1/notifications/:id/read` | Cross-user IDOR | Run 2 | Enforced (404 Not Found for non-recipient) |
+| Notifications | `PATCH /api/v1/notifications/read-all` | Authenticated | Run 2 | Enforced (Marks only caller's notifications read) |
+| Attachments | `GET /api/v1/issues/:id/attachments` | Member vs Non-member | Run 2 | Enforced (403 Forbidden on foreign project issue) |
+| Attachments | `GET /api/v1/attachments/:id/download` | Authenticated | Run 2 | Enforced (404 Not Found on invalid ID) |
 | Dashboard | `GET /api/v1/dashboard` | Developer / Tester / Admin | Run 1 | Enforced (Scoped metrics and activities) |

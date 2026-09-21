@@ -27,6 +27,7 @@ Returns the status of the API server and database connection.
 ### `POST /auth/register`
 Self-service registration for `Developer` or `Tester` roles (Admin cannot be self-registered).
 - **Body**: `{ name, email, password, role }`
+- **System-Generated Fields**: Assigns a sequential, role-prefixed, zero-padded `employeeId` (`DEV-0001`, `TST-0001`) atomically via the `Counter` collection. Clients cannot specify or override this field.
 - **Response**: `201 Created`
 
 ### `POST /auth/login`
@@ -42,7 +43,9 @@ Authenticates a user and issues a signed JWT.
       "_id": "6aaf7f1dce6eab64e7cc44cb",
       "name": "Admin User",
       "email": "admin@bugboard.test",
-      "role": "Admin"
+      "role": "Admin",
+      "employeeId": "ADM-0001",
+      "designation": "Platform Administrator"
     }
   }
 }
@@ -50,11 +53,57 @@ Authenticates a user and issues a signed JWT.
 
 ---
 
-## 3. Users Directory
+## 3. Users & Profiles
+### `GET /users/me`
+Retrieves the full profile of the currently authenticated user.
+- **Auth**: Bearer JWT (any active role)
+- **Response**: `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "_id": "6aaf7f1dce6eab64e7cc44cb",
+      "name": "Alice Developer",
+      "email": "alice@bugboard.test",
+      "role": "Developer",
+      "employeeId": "DEV-0001",
+      "designation": "Senior Backend Engineer",
+      "phone": "+1-555-0199",
+      "avatarUrl": "https://example.com/avatar.jpg",
+      "isActive": true,
+      "createdAt": "2026-03-15T10:00:00.000Z"
+    }
+  }
+}
+```
+
+### `PATCH /users/me`
+Self-service profile update for the currently authenticated user.
+- **Auth**: Bearer JWT (any active role)
+- **Body**: `{ name?, phone?, avatarUrl? }`
+- **Mass-Assignment Guard**: Attempts to update `employeeId`, `designation`, `isActive`, or `role` are rejected with `422 Unprocessable Entity`.
+- **Response**: `200 OK` Updated user profile
+
 ### `GET /users`
-Returns list of all active users in the system for member assignment.
+Directory of users. Admins see all users with profile data and can filter by role. Non-admins see only non-admin co-members in shared projects.
 - **Auth**: Bearer JWT
-- **Response**: `200 OK` array of `{ _id, name, email, role }`
+- **Query Params**: `?role=Developer` (optional, Admin only: `Admin` | `Developer` | `Tester`)
+- **Response**: `200 OK` Array of user objects
+
+### `GET /users/:userId`
+Retrieves detailed profile information for a specific user.
+- **Auth**: Bearer JWT (`Admin` role only)
+- **Response**: `200 OK` User profile, or `404 Not Found`
+
+### `PATCH /users/:userId`
+Administrative update for a user account (designation, active status).
+- **Auth**: Bearer JWT (`Admin` role only)
+- **Body**: `{ designation?, isActive? }`
+- **Immutability & Blanket Guards**:
+  - `employeeId`: System-generated and immutable. Any `employeeId` included in the request body is silently ignored and never modifies the database value.
+  - **Self-Target Guard**: Administrators cannot modify their own record via this endpoint (`:userId === req.user.id`). The entire request is rejected with `403 Forbidden` (`"Use your profile page to update your own information; administrators cannot edit their own organizational record through this endpoint."`).
+- **Response**: `200 OK` Updated user document
 
 ---
 

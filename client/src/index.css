@@ -360,6 +360,12 @@ h3 { font-size: 1.05rem; }  /* ~17px */
   border-color: var(--status-resolved) !important;
 }
 
+/* Marks an input as having a validation error */
+.input-invalid {
+  border-color: var(--priority-urgent) !important;
+  box-shadow: 0 0 0 2px rgba(var(--priority-urgent-rgb, 239, 68, 68), 0.15) !important;
+}
+
 /* field-error class on form-group tightens the gap */
 .form-group.field-error {
   /* keeps existing layout */

@@ -6,6 +6,12 @@ import { Activity } from '../models/Activity.js';
 import { ROLES } from '../constants/roles.js';
 import { workflowService } from './workflow.service.js';
 import { notificationService } from './notification.service.js';
+import {
+  BadRequestError,
+  ValidationError,
+  NotFoundError,
+  ForbiddenError,
+} from '../utils/errors.js';
 
 const POPULATE_ISSUE = [
   {
@@ -30,18 +36,14 @@ class IssueService {
   async createIssue(issueData, user) {
     const project = await Project.findById(issueData.project);
     if (!project) {
-      const error = new Error('Project not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Project not found');
     }
 
     // Requester must be Admin or a member of the project
     if (user.role !== ROLES.ADMIN) {
       const isMember = project.members.some((m) => m.toString() === user.id.toString());
       if (!isMember) {
-        const error = new Error('Forbidden: You are not an authorized member of this project');
-        error.statusCode = 403;
-        throw error;
+        throw new ForbiddenError('Forbidden: You are not an authorized member of this project');
       }
     }
 
@@ -52,20 +54,25 @@ class IssueService {
         (m) => m.toString() === issueData.assignee.toString()
       );
       if (!isAssigneeMember) {
-        const error = new Error('Assignee must be an active member of this project');
-        error.statusCode = 422;
-        throw error;
+        throw new ValidationError('Assignee must be an active member of this project', [
+          { field: 'assignee', message: 'Assignee must be an active member of this project' },
+        ]);
       }
       const assigneeUser = await User.findById(issueData.assignee);
       if (!assigneeUser) {
-        const error = new Error('Assignee user does not exist');
-        error.statusCode = 422;
-        throw error;
+        throw new ValidationError('Assignee user does not exist', [
+          { field: 'assignee', message: 'Assignee user does not exist' },
+        ]);
+      }
+      if (assigneeUser.isActive === false) {
+        throw new ValidationError('Selected assignee is inactive and cannot be assigned to issues', [
+          { field: 'assignee', message: 'Selected assignee is inactive and cannot be assigned to issues' },
+        ]);
       }
       if (assigneeUser.role !== ROLES.DEVELOPER) {
-        const error = new Error('Issues can only be assigned to Developers');
-        error.statusCode = 422;
-        throw error;
+        throw new ValidationError('Issues can only be assigned to Developers', [
+          { field: 'assignee', message: 'Issues can only be assigned to Developers' },
+        ]);
       }
       assigneeId = issueData.assignee;
     }
@@ -106,9 +113,7 @@ class IssueService {
           (id) => id.toString() === queryParams.project.toString()
         );
         if (!hasAccess) {
-          const error = new Error('Forbidden: You do not have access to issues in this project');
-          error.statusCode = 403;
-          throw error;
+          throw new ForbiddenError('Forbidden: You do not have access to issues in this project');
         }
         filter.project = queryParams.project;
       } else {
@@ -125,7 +130,7 @@ class IssueService {
       }
     }
 
-    // 2. Query Filters
+    // 2. Exact Match Filters
     if (queryParams.status) {
       filter.status = queryParams.status;
     }
@@ -138,35 +143,42 @@ class IssueService {
     if (queryParams.reporter) {
       filter.reporter = queryParams.reporter;
     }
-    if (queryParams.assignee) {
+    if (queryParams.assignee !== undefined) {
       if (queryParams.assignee === 'unassigned') {
         filter.assignee = null;
-      } else {
+      } else if (queryParams.assignee) {
         filter.assignee = queryParams.assignee;
       }
     }
 
-    // 3. Full-text search on title and description
-    if (queryParams.search && queryParams.search.trim()) {
+    // 3. Text Search (title & description)
+    if (queryParams.search) {
       filter.$text = { $search: queryParams.search.trim() };
     }
 
-    // 4. Pagination & Sorting
-    const page = Math.max(parseInt(queryParams.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(queryParams.limit, 10) || 20, 1), 100);
+    // 4. Sorting
+    let sort = { createdAt: -1 };
+    if (queryParams.sort) {
+      const sortField = queryParams.sort;
+      if (sortField.startsWith('-')) {
+        sort = { [sortField.substring(1)]: -1 };
+      } else {
+        sort = { [sortField]: 1 };
+      }
+    }
+
+    // 5. Pagination
+    const page = Math.max(1, parseInt(queryParams.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(queryParams.limit, 10) || 20));
     const skip = (page - 1) * limit;
 
-    const sortField = queryParams.sort || '-createdAt';
-
-    const [total, issues] = await Promise.all([
-      Issue.countDocuments(filter),
+    const [issues, total] = await Promise.all([
       Issue.find(filter)
-        .sort(sortField)
+        .sort(sort)
         .skip(skip)
         .limit(limit)
-        .populate('project', 'name key')
-        .populate('reporter', 'name email role')
-        .populate('assignee', 'name email role'),
+        .populate(POPULATE_ISSUE),
+      Issue.countDocuments(filter),
     ]);
 
     const totalPages = Math.ceil(total / limit) || 0;
@@ -187,26 +199,20 @@ class IssueService {
     const issue = await Issue.findById(issueId).populate(POPULATE_ISSUE);
 
     if (!issue) {
-      const error = new Error('Issue not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Issue not found');
     }
 
     // Verify project authorization
     if (user.role !== ROLES.ADMIN) {
       if (!issue.project) {
-        const error = new Error('Project associated with this issue is unavailable or has been deleted');
-        error.statusCode = 404;
-        throw error;
+        throw new NotFoundError('Project associated with this issue is unavailable or has been deleted');
       }
       const members = Array.isArray(issue.project.members) ? issue.project.members : [];
       const isMember = members.some(
         (m) => (m._id || m).toString() === user.id.toString()
       );
       if (!isMember) {
-        const error = new Error('Forbidden: You do not have access to this issue');
-        error.statusCode = 403;
-        throw error;
+        throw new ForbiddenError('Forbidden: You do not have access to this issue');
       }
     }
 
@@ -244,22 +250,23 @@ class IssueService {
       hasChanges = true;
     }
 
-    if (hasChanges) {
-      await issue.save();
+    if (!hasChanges) {
+      return issue;
     }
 
-    if (changes.length > 0) {
+    await issue.save();
 
-      // Record Activity audit logs for each changed field
+    // Batch create activity logs
+    if (changes.length > 0) {
       await Promise.all(
-        changes.map((ch) =>
+        changes.map((change) =>
           Activity.create({
             issue: issue._id,
             actor: user.id,
             action: 'ISSUE_UPDATED',
-            field: ch.field,
-            oldValue: String(ch.oldValue),
-            newValue: String(ch.newValue),
+            field: change.field,
+            oldValue: change.oldValue ? change.oldValue.toString() : null,
+            newValue: change.newValue ? change.newValue.toString() : null,
             createdAt: new Date(),
           })
         )
@@ -271,20 +278,23 @@ class IssueService {
 
   /**
    * Dedicated status transition endpoint.
-   * Runs the centralized state machine, validates role permissions, and creates an Activity record.
+   * Enforces State Machine workflow and role permissions.
+   * Records Activity and dispatches in-app notifications.
    */
   async updateIssueStatus(issueId, newStatus, user) {
     const issue = await this.getIssueById(issueId, user);
 
-    const validation = workflowService.validateStatusTransition(
+    // Validate state transition through workflow engine
+    const validation = workflowService.validateTransition(
       issue.status,
       newStatus,
       user.role
     );
 
     if (!validation.isValid) {
-      const error = new Error(validation.message);
-      error.statusCode = 400;
+      const error = new BadRequestError(validation.message, [
+        { field: 'status', message: validation.message },
+      ]);
       error.legalStates = validation.legalStates;
       throw error;
     }
@@ -329,20 +339,25 @@ class IssueService {
         (m) => m.toString() === newAssigneeId.toString()
       );
       if (!isMember) {
-        const error = new Error('Assignee must be an active member of this project');
-        error.statusCode = 422;
-        throw error;
+        throw new ValidationError('Assignee must be an active member of this project', [
+          { field: 'assignee', message: 'Assignee must be an active member of this project' },
+        ]);
       }
       const userDoc = await User.findById(newAssigneeId);
       if (!userDoc) {
-        const error = new Error('Assignee user does not exist');
-        error.statusCode = 422;
-        throw error;
+        throw new ValidationError('Assignee user does not exist', [
+          { field: 'assignee', message: 'Assignee user does not exist' },
+        ]);
+      }
+      if (userDoc.isActive === false) {
+        throw new ValidationError('Selected assignee is inactive and cannot be assigned to issues', [
+          { field: 'assignee', message: 'Selected assignee is inactive and cannot be assigned to issues' },
+        ]);
       }
       if (userDoc.role !== ROLES.DEVELOPER) {
-        const error = new Error('Issues can only be assigned to Developers');
-        error.statusCode = 422;
-        throw error;
+        throw new ValidationError('Issues can only be assigned to Developers', [
+          { field: 'assignee', message: 'Issues can only be assigned to Developers' },
+        ]);
       }
       targetAssignee = userDoc._id;
     }
@@ -399,9 +414,7 @@ class IssueService {
       (issue.reporter._id ? issue.reporter._id.toString() : issue.reporter.toString()) === user.id.toString();
 
     if (!isAdmin && !isReporter) {
-      const error = new Error('Forbidden: Only an Admin or the issue Reporter can delete this issue');
-      error.statusCode = 403;
-      throw error;
+      throw new ForbiddenError('Forbidden: Only an Admin or the issue Reporter can delete this issue');
     }
 
     // Cascade delete comments and activities

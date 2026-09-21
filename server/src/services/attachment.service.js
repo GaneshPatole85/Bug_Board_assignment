@@ -5,6 +5,12 @@ import { Issue } from '../models/Issue.js';
 import { Project } from '../models/Project.js';
 import { ROLES } from '../constants/roles.js';
 import { storageService } from './storage.service.js';
+import {
+  BadRequestError,
+  ValidationError,
+  NotFoundError,
+  ForbiddenError,
+} from '../utils/errors.js';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -31,32 +37,24 @@ class AttachmentService {
   async _verifyIssueAndProjectAccess(issueId, user) {
     const issue = await Issue.findById(issueId).select('_id project');
     if (!issue) {
-      const error = new Error('Issue not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Issue not found');
     }
 
     if (user.role !== ROLES.ADMIN) {
       if (!issue.project) {
-        const error = new Error('Project associated with this issue is unavailable');
-        error.statusCode = 404;
-        throw error;
+        throw new NotFoundError('Project associated with this issue is unavailable');
       }
 
       const project = await Project.findById(issue.project).select('members');
       if (!project) {
-        const error = new Error('Project not found');
-        error.statusCode = 404;
-        throw error;
+        throw new NotFoundError('Project not found');
       }
 
       const userIdStr = (user.id || user._id).toString();
       const isMember = (project.members || []).some((mId) => mId.toString() === userIdStr);
 
       if (!isMember) {
-        const error = new Error('Forbidden: You do not have access to this project');
-        error.statusCode = 403;
-        throw error;
+        throw new ForbiddenError('Forbidden: You do not have access to this project');
       }
     }
 
@@ -68,9 +66,9 @@ class AttachmentService {
    */
   async uploadAttachment(issueId, user, file) {
     if (!file) {
-      const error = new Error('No file uploaded');
-      error.statusCode = 400;
-      throw error;
+      throw new BadRequestError('No file uploaded', [
+        { field: 'file', message: 'No file uploaded' },
+      ]);
     }
 
     // 1. Verify project authorization
@@ -78,20 +76,28 @@ class AttachmentService {
 
     // 2. Validate MIME type
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      const error = new Error(
-        `Disallowed file type: ${file.mimetype}. Allowed types include images (PNG, JPEG, WebP, GIF, SVG) and documents (PDF, TXT, CSV, JSON).`
+      throw new ValidationError(
+        `Disallowed file type: ${file.mimetype}. Allowed types include images (PNG, JPEG, WebP, GIF, SVG) and documents (PDF, TXT, CSV, JSON).`,
+        [
+          {
+            field: 'file',
+            message: `Disallowed file type: ${file.mimetype}. Allowed types include images and documents.`,
+          },
+        ]
       );
-      error.statusCode = 422;
-      throw error;
     }
 
     // 3. Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      const error = new Error(
-        `File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the maximum allowed limit of 5 MB.`
+      throw new ValidationError(
+        `File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the maximum allowed limit of 5 MB.`,
+        [
+          {
+            field: 'file',
+            message: `File size exceeds the maximum allowed limit of 5 MB.`,
+          },
+        ]
       );
-      error.statusCode = 422;
-      throw error;
     }
 
     // 4. Generate unique storage key (never trust client filename for storage path)
@@ -133,9 +139,7 @@ class AttachmentService {
   async getAttachmentForDownload(attachmentId, user) {
     const attachment = await Attachment.findById(attachmentId);
     if (!attachment) {
-      const error = new Error('Attachment not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('Attachment not found');
     }
 
     // Verify user has access to parent issue's project

@@ -73,6 +73,13 @@ class WorkflowService {
   }
 
   /**
+   * Alias for validateStatusTransition
+   */
+  validateTransition(currentStatus, targetStatus, userRole) {
+    return this.validateStatusTransition(currentStatus, targetStatus, userRole);
+  }
+
+  /**
    * Retrieve all legal next transitions available from currentStatus for a given role.
    *
    * @param {string} currentStatus

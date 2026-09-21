@@ -19,7 +19,8 @@ export const IssueFilters = ({
     filters.status ||
     filters.priority ||
     filters.severity ||
-    filters.assignee
+    filters.assignee ||
+    filters.reporter
   );
 
   const handleSelect = (field, value) => {
@@ -121,6 +122,25 @@ export const IssueFilters = ({
         >
           <option value="">All assignees</option>
           <option value="unassigned">Unassigned</option>
+          {users.map((u) => (
+            <option key={u._id} value={u._id}>
+              {u.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="filter-item">
+        <label htmlFor="filter-reporter" className="filter-label">
+          Reporter
+        </label>
+        <select
+          id="filter-reporter"
+          className={`filter-select ${filters.reporter ? 'filter-active' : ''}`}
+          value={filters.reporter || ''}
+          onChange={(e) => handleSelect('reporter', e.target.value)}
+        >
+          <option value="">All reporters</option>
           {users.map((u) => (
             <option key={u._id} value={u._id}>
               {u.name}

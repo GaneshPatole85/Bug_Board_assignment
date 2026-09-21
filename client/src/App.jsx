@@ -8,6 +8,8 @@ import IssuesPage from './pages/IssuesPage.jsx';
 import IssueDetailPage from './pages/IssueDetailPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
+import TeamPage from './pages/TeamPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ProtectedRoute from './routes/ProtectedRoute.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
@@ -36,6 +38,15 @@ export const App = () => {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="issues" element={<IssuesPage />} />
           <Route path="issues/:issueId" element={<IssueDetailPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route
+            path="team"
+            element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <TeamPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
