@@ -5,9 +5,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from server root or repo root if available
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Load .env from repo root (primary) or server root if available
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
